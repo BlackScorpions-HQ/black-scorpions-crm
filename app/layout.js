@@ -1,4 +1,3 @@
-
 export const metadata = {
   title: "Black Scorpions CRM",
   description: "Black Scorpions Recruitment Agency CRM",
