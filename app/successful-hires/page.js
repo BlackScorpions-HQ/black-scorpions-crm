@@ -60,26 +60,35 @@ export default function SuccessfulHires() {
 
     setIsCEO(true);
 
-    const [hireResult, candidateResult, recruiterResult] =
-      await Promise.all([
-        supabase
-          .from("successful_hires")
-          .select("*")
-          .order("created_at", { ascending: false }),
+    const [
+      hireResult,
+      candidateResult,
+      recruiterResult,
+      teamResult,
+    ] = await Promise.all([
+      supabase
+        .from("successful_hires")
+        .select("*")
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("candidates")
-          .select("id, full_name, recruiter_name, created_by")
-          .order("created_at", { ascending: false }),
+      supabase
+        .from("candidates")
+        .select("id, full_name, recruiter_name, created_by")
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("user_roles")
-          .select("id, full_name, role, team_leader_id")
-          .in("role", ["Recruiter", "Team Leader", "CEO"]),
-      ]);
+      supabase
+        .from("user_roles")
+        .select("id, role, team_leader_id")
+        .in("role", ["Recruiter", "Team Leader", "CEO"]),
 
-    if (hireResult.error) setError(hireResult.error.message);
-    else setHires(hireResult.data || []);
+      supabase.rpc("get_my_team"),
+    ]);
+
+    if (hireResult.error) {
+      setError(hireResult.error.message);
+    } else {
+      setHires(hireResult.data || []);
+    }
 
     if (candidateResult.error) {
       setError(candidateResult.error.message);
@@ -89,8 +98,25 @@ export default function SuccessfulHires() {
 
     if (recruiterResult.error) {
       setError(recruiterResult.error.message);
+    } else if (teamResult.error) {
+      setError(teamResult.error.message);
     } else {
-      setRecruiters(recruiterResult.data || []);
+      const teamMembers = teamResult.data || [];
+
+      const membersWithNames = (recruiterResult.data || []).map(
+        (person) => {
+          const info = teamMembers.find(
+            (member) => member.member_id === person.id
+          );
+
+          return {
+            ...person,
+            full_name: info?.member_name || "Unknown User",
+          };
+        }
+      );
+
+      setRecruiters(membersWithNames);
     }
 
     setLoading(false);
@@ -118,8 +144,8 @@ export default function SuccessfulHires() {
       (item) => item.id === form.recruiter_id
     );
 
-    if (!candidate || !recruiter) {
-      setError("Please select a candidate and recruiter.");
+    if (!candidate || !recruiter || recruiter.role !== "Recruiter") {
+      setError("Please select a valid candidate and recruiter.");
       setSaving(false);
       return;
     }
@@ -133,28 +159,41 @@ export default function SuccessfulHires() {
     const founderCommission = Number(form.founder_commission);
 
     if (
-      [recruiterCommission, teamLeaderCommission, founderCommission]
-        .some((value) => !Number.isFinite(value) || value < 0)
+      [
+        recruiterCommission,
+        teamLeaderCommission,
+        founderCommission,
+      ].some((value) => !Number.isFinite(value) || value < 0)
     ) {
       setError("Commission amounts must be valid non-negative numbers.");
       setSaving(false);
       return;
     }
 
-    const { data: authData } = await supabase.auth.getUser();
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser();
+
+    if (authError || !authData?.user) {
+      setError("Please login again.");
+      setSaving(false);
+      return;
+    }
+
     const founderId = authData.user.id;
 
     const hirePayload = {
       candidate_id: candidate.id,
       candidate_name: candidate.full_name,
       company_name: form.company_name.trim(),
-      job_title: form.job_title.trim(),
+      job_title: form.job_title.trim() || null,
       recruiter_id: recruiter.id,
-      recruiter_name: recruiter.full_name || candidate.recruiter_name || "Recruiter",
+      recruiter_name: recruiter.full_name,
       team_leader_id: teamLeader?.id || null,
       team_leader_name: teamLeader?.full_name || null,
       recruiter_commission: recruiterCommission,
-      team_leader_commission: teamLeader ? teamLeaderCommission : 0,
+      team_leader_commission: teamLeader
+        ? teamLeaderCommission
+        : 0,
       founder_commission: founderCommission,
       hiring_date: form.hiring_date,
     };
@@ -175,13 +214,13 @@ export default function SuccessfulHires() {
       {
         successful_hire_id: hire.id,
         user_id: recruiter.id,
-        user_name: recruiter.full_name || "Recruiter",
+        user_name: recruiter.full_name,
         user_role: "Recruiter",
         amount: recruiterCommission,
         status: "Pending",
       },
       {
-        successful_hire_id: founderId === recruiter.id ? null : hire.id,
+        successful_hire_id: hire.id,
         user_id: founderId,
         user_name: "Founder",
         user_role: "CEO",
@@ -194,7 +233,7 @@ export default function SuccessfulHires() {
       commissionRows.push({
         successful_hire_id: hire.id,
         user_id: teamLeader.id,
-        user_name: teamLeader.full_name || "Team Leader",
+        user_name: teamLeader.full_name,
         user_role: "Team Leader",
         amount: teamLeaderCommission,
         status: "Pending",
@@ -207,15 +246,18 @@ export default function SuccessfulHires() {
 
     if (commissionError) {
       setError(
-        "Hire was saved, but commission records could not be created: " +
+        "Hire saved, but commissions could not be created: " +
           commissionError.message
       );
+
       await loadPage();
       setSaving(false);
       return;
     }
 
-    setMessage("Successful hire and commissions added successfully! 🔥");
+    setMessage(
+      "Successful hire and commissions added successfully! 🔥"
+    );
 
     setForm({
       candidate_id: "",
@@ -264,6 +306,7 @@ export default function SuccessfulHires() {
   return (
     <main style={styles.page}>
       <h1 style={styles.title}>🦂 Successful Hires</h1>
+
       <p style={{ color: "#aaa" }}>
         Manage successful placements and team commissions.
       </p>
@@ -276,13 +319,17 @@ export default function SuccessfulHires() {
 
         <form onSubmit={addSuccessfulHire}>
           <label>Candidate</label>
+
           <select
             required
             style={inputStyle}
             value={form.candidate_id}
-            onChange={(e) => updateForm("candidate_id", e.target.value)}
+            onChange={(e) =>
+              updateForm("candidate_id", e.target.value)
+            }
           >
             <option value="">Select Candidate</option>
+
             {candidates.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.full_name}
@@ -291,51 +338,67 @@ export default function SuccessfulHires() {
           </select>
 
           <label>Recruiter</label>
+
           <select
             required
             style={inputStyle}
             value={form.recruiter_id}
-            onChange={(e) => updateForm("recruiter_id", e.target.value)}
+            onChange={(e) =>
+              updateForm("recruiter_id", e.target.value)
+            }
           >
             <option value="">Select Recruiter</option>
+
             {recruiters
               .filter((person) => person.role === "Recruiter")
               .map((person) => (
                 <option key={person.id} value={person.id}>
-                  {person.full_name || person.id}
+                  {person.full_name}
                 </option>
               ))}
           </select>
 
           <label>Company Name</label>
+
           <input
             required
             style={inputStyle}
             value={form.company_name}
-            onChange={(e) => updateForm("company_name", e.target.value)}
+            onChange={(e) =>
+              updateForm("company_name", e.target.value)
+            }
             placeholder="Company name"
           />
 
           <label>Job Title</label>
+
           <input
             style={inputStyle}
             value={form.job_title}
-            onChange={(e) => updateForm("job_title", e.target.value)}
+            onChange={(e) =>
+              updateForm("job_title", e.target.value)
+            }
             placeholder="Job title"
           />
 
           <label>Hiring Date</label>
+
           <input
             required
             type="date"
             style={inputStyle}
             value={form.hiring_date}
-            onChange={(e) => updateForm("hiring_date", e.target.value)}
+            onChange={(e) =>
+              updateForm("hiring_date", e.target.value)
+            }
           />
 
-          <h3 style={styles.heading}>Commission Distribution (EGP)</h3>
+          <h3 style={styles.heading}>
+            Commission Distribution (EGP)
+          </h3>
 
           <label>Recruiter Commission</label>
+
           <input
             required
             type="number"
@@ -348,6 +411,7 @@ export default function SuccessfulHires() {
           />
 
           <label>Team Leader Commission</label>
+
           <input
             required
             type="number"
@@ -360,6 +424,7 @@ export default function SuccessfulHires() {
           />
 
           <label>Founder Commission</label>
+
           <input
             required
             type="number"
@@ -371,7 +436,11 @@ export default function SuccessfulHires() {
             }
           />
 
-          <button type="submit" disabled={saving} style={styles.button}>
+          <button
+            type="submit"
+            disabled={saving}
+            style={styles.button}
+          >
             {saving ? "Saving..." : "Publish Successful Hire"}
           </button>
         </form>
@@ -383,7 +452,9 @@ export default function SuccessfulHires() {
         </h2>
 
         {hires.length === 0 ? (
-          <p style={{ color: "#aaa" }}>No successful hires yet.</p>
+          <p style={{ color: "#aaa" }}>
+            No successful hires yet.
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={styles.table}>
@@ -396,6 +467,7 @@ export default function SuccessfulHires() {
                   <th>Date</th>
                 </tr>
               </thead>
+
               <tbody>
                 {hires.map((hire) => (
                   <tr key={hire.id}>
@@ -423,11 +495,13 @@ const styles = {
     padding: "25px",
     fontFamily: "Arial, sans-serif",
   },
+
   title: {
     color: "#d4af37",
     fontSize: "30px",
     marginBottom: "5px",
   },
+
   card: {
     background: "#111",
     border: "1px solid #80621c",
@@ -435,10 +509,12 @@ const styles = {
     padding: "20px",
     marginTop: "25px",
   },
+
   heading: {
     color: "#d4af37",
     marginBottom: "20px",
   },
+
   button: {
     width: "100%",
     padding: "14px",
@@ -449,18 +525,21 @@ const styles = {
     borderRadius: "8px",
     cursor: "pointer",
   },
+
   success: {
     color: "#4ade80",
     padding: "12px",
     background: "#102516",
     borderRadius: "8px",
   },
+
   error: {
     color: "#ff6464",
     padding: "12px",
     background: "#2b1111",
     borderRadius: "8px",
   },
+
   table: {
     width: "100%",
     borderCollapse: "collapse",
