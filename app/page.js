@@ -13,7 +13,7 @@ export default function Home() {
   const [teamLoading, setTeamLoading] = useState(false);
   const [teamError, setTeamError] = useState("");
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     async function loadDashboard() {
@@ -67,7 +67,7 @@ export default function Home() {
     }
 
     loadDashboard();
-  }, []);
+  }, [supabase]);
 
   async function logout() {
     await supabase.auth.signOut();
@@ -97,6 +97,7 @@ export default function Home() {
         ["Candidates", "/candidates", "Manage candidate database"],
         ["Job Offers", "/job-offers", "Manage company vacancies"],
         ["Recruiters", "/recruiters", "Manage recruitment team"],
+        ["Account Management", "/account-management", "Manage accounts and team assignments"],
         ["Successful Hires", "/successful-hires", "Track successful placements"],
         ["Commissions", "/commissions", "Track team commissions"],
         ["Settings", "/settings", "System administration"]
@@ -133,7 +134,14 @@ export default function Home() {
 
       <section style={styles.grid}>
         {sections.map(([title, href, description]) => (
-          <a href={href} key={title} style={styles.item}>
+          <a
+            href={href}
+            key={title}
+            style={{
+              ...styles.item,
+              ...(title === "Account Management" ? styles.adminItem : {})
+            }}
+          >
             <h3 style={styles.gold}>{title} →</h3>
             <p style={styles.muted}>{description}</p>
           </a>
@@ -279,6 +287,11 @@ const styles = {
     borderRadius: 12,
     padding: 18,
     color: "#fff"
+  },
+  adminItem: {
+    border: "1px solid #d4af37",
+    background: "linear-gradient(135deg, #211b0d, #171717)",
+    boxShadow: "0 0 12px rgba(212,175,55,0.12)"
   },
   teamSection: {
     marginTop: 35,
