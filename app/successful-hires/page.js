@@ -14,6 +14,9 @@ export default function SuccessfulHires() {
 
   const [hires, setHires] = useState([]);
   const [candidates, setCandidates] = useState([]);
+  const [recruiters, setRecruiters] = useState([]);
+  const [teamLeaders, setTeamLeaders] = useState([]);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -22,10 +25,15 @@ export default function SuccessfulHires() {
     company_name: "",
     job_title: "",
     hiring_date: new Date().toISOString().split("T")[0],
+
+    recruiter_id: "",
     recruiter_name: "",
     recruiter_commission: "0",
+
+    team_leader_id: "",
     team_leader_name: "",
     team_leader_commission: "0",
+
     founder_name: "",
     founder_commission: "0",
   });
@@ -72,17 +80,20 @@ export default function SuccessfulHires() {
       founder_name: previous.founder_name || founderDefault,
     }));
 
-    const [hireResult, candidateResult] = await Promise.all([
-      supabase
-        .from("successful_hires")
-        .select("*")
-        .order("created_at", { ascending: false }),
+    const [hireResult, candidateResult, teamResult] =
+      await Promise.all([
+        supabase
+          .from("successful_hires")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      supabase
-        .from("candidates")
-        .select("id, full_name")
-        .order("created_at", { ascending: false }),
-    ]);
+        supabase
+          .from("candidates")
+          .select("id, full_name")
+          .order("created_at", { ascending: false }),
+
+        supabase.rpc("get_my_team"),
+      ]);
 
     if (hireResult.error) {
       setError(hireResult.error.message);
@@ -94,6 +105,27 @@ export default function SuccessfulHires() {
       setError(candidateResult.error.message);
     } else {
       setCandidates(candidateResult.data || []);
+    }
+
+    if (teamResult.error) {
+      setError(
+        "Could not load recruiter and Team Leader accounts: " +
+          teamResult.error.message
+      );
+    } else {
+      const accounts = teamResult.data || [];
+
+      setRecruiters(
+        accounts.filter(
+          (account) => account.member_role === "Recruiter"
+        )
+      );
+
+      setTeamLeaders(
+        accounts.filter(
+          (account) => account.member_role === "Team Leader"
+        )
+      );
     }
 
     setLoading(false);
@@ -117,43 +149,70 @@ export default function SuccessfulHires() {
       (item) => item.id === form.candidate_id
     );
 
+    const recruiter = recruiters.find(
+      (item) => item.member_id === form.recruiter_id
+    );
+
+    const teamLeader = teamLeaders.find(
+      (item) => item.member_id === form.team_leader_id
+    );
+
     if (!candidate) {
       setError("Please select a candidate.");
       setSaving(false);
       return;
     }
 
-    if (
-      !form.company_name.trim() ||
-      !form.recruiter_name.trim() ||
-      !form.founder_name.trim()
-    ) {
-      setError("Please complete the required names and company.");
+    if (!recruiter) {
+      setError("Please select a Recruiter account.");
       setSaving(false);
       return;
     }
 
-    const recruiterCommission = Number(form.recruiter_commission);
-    const teamLeaderCommission = Number(form.team_leader_commission);
-    const founderCommission = Number(form.founder_commission);
+    if (
+      !form.company_name.trim() ||
+      !form.founder_name.trim()
+    ) {
+      setError("Please complete the company and Founder name.");
+      setSaving(false);
+      return;
+    }
+
+    const recruiterCommission = Number(
+      form.recruiter_commission
+    );
+
+    const teamLeaderCommission = Number(
+      form.team_leader_commission
+    );
+
+    const founderCommission = Number(
+      form.founder_commission
+    );
 
     if (
       [
         recruiterCommission,
         teamLeaderCommission,
         founderCommission,
-      ].some((value) => !Number.isFinite(value) || value < 0)
+      ].some(
+        (value) => !Number.isFinite(value) || value < 0
+      )
     ) {
-      setError("Commission amounts must be valid non-negative numbers.");
+      setError(
+        "Commission amounts must be valid non-negative numbers."
+      );
       setSaving(false);
       return;
     }
 
     if (
       teamLeaderCommission > 0 &&
-      !form.team_leader_name.trim()
+      !teamLeader
     ) {
-      setError("Enter the Team Leader name for their commission.");
+      setError(
+        "Please select a Team Leader for their commission."
+      );
       setSaving(false);
       return;
     }
@@ -174,21 +233,30 @@ export default function SuccessfulHires() {
       candidate_name: candidate.full_name,
       company_name: form.company_name.trim(),
       job_title: form.job_title.trim() || null,
-      recruiter_id: null,
-      recruiter_name: form.recruiter_name.trim(),
-      team_leader_id: null,
-      team_leader_name: form.team_leader_name.trim() || null,
+
+      recruiter_id: recruiter.member_id,
+      recruiter_name: recruiter.member_name,
+
+      team_leader_id: teamLeader
+        ? teamLeader.member_id
+        : null,
+
+      team_leader_name: teamLeader
+        ? teamLeader.member_name
+        : null,
+
       recruiter_commission: recruiterCommission,
       team_leader_commission: teamLeaderCommission,
       founder_commission: founderCommission,
       hiring_date: form.hiring_date,
     };
 
-    const { data: hire, error: hireError } = await supabase
-      .from("successful_hires")
-      .insert(hirePayload)
-      .select()
-      .single();
+    const { data: hire, error: hireError } =
+      await supabase
+        .from("successful_hires")
+        .insert(hirePayload)
+        .select()
+        .single();
 
     if (hireError) {
       setError(hireError.message);
@@ -199,16 +267,20 @@ export default function SuccessfulHires() {
     const commissionRows = [
       {
         successful_hire_id: hire.id,
-        user_id: null,
-        user_name: form.recruiter_name.trim(),
+        user_id: recruiter.member_id,
+        user_name: recruiter.member_name,
         user_role: "Recruiter",
         amount: recruiterCommission,
         status: "Pending",
       },
       {
         successful_hire_id: hire.id,
-        user_id: null,
-        user_name: form.team_leader_name.trim() || "No Team Leader",
+        user_id: teamLeader
+          ? teamLeader.member_id
+          : null,
+        user_name: teamLeader
+          ? teamLeader.member_name
+          : "No Team Leader",
         user_role: "Team Leader",
         amount: teamLeaderCommission,
         status: "Pending",
@@ -238,17 +310,24 @@ export default function SuccessfulHires() {
       return;
     }
 
-    setMessage("Successful Hire and all commissions added! 🔥");
+    setMessage(
+      "Successful Hire and all commissions added! 🔥"
+    );
 
     setForm({
       candidate_id: "",
       company_name: "",
       job_title: "",
       hiring_date: new Date().toISOString().split("T")[0],
+
+      recruiter_id: "",
       recruiter_name: "",
       recruiter_commission: "0",
+
+      team_leader_id: "",
       team_leader_name: "",
       team_leader_commission: "0",
+
       founder_name: form.founder_name,
       founder_commission: "0",
     });
@@ -274,7 +353,9 @@ export default function SuccessfulHires() {
       .eq("id", hire.id);
 
     if (deleteError) {
-      setError("Could not delete hire: " + deleteError.message);
+      setError(
+        "Could not delete hire: " + deleteError.message
+      );
       setDeletingId(null);
       return;
     }
@@ -395,15 +476,35 @@ export default function SuccessfulHires() {
             <h3 style={styles.heading}>👤 Recruiter</h3>
 
             <label>Recruiter Name</label>
-            <input
+            <select
               required
               style={inputStyle}
-              value={form.recruiter_name}
-              onChange={(e) =>
-                updateForm("recruiter_name", e.target.value)
-              }
-              placeholder="Write Recruiter name"
-            />
+              value={form.recruiter_id}
+              onChange={(e) => {
+                const selected = recruiters.find(
+                  (item) => item.member_id === e.target.value
+                );
+
+                setForm((previous) => ({
+                  ...previous,
+                  recruiter_id: e.target.value,
+                  recruiter_name: selected
+                    ? selected.member_name
+                    : "",
+                }));
+              }}
+            >
+              <option value="">Select Recruiter</option>
+
+              {recruiters.map((recruiter) => (
+                <option
+                  key={recruiter.member_id}
+                  value={recruiter.member_id}
+                >
+                  {recruiter.member_name}
+                </option>
+              ))}
+            </select>
 
             <label>Recruiter Commission (EGP)</label>
             <input
@@ -413,7 +514,10 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.recruiter_commission}
               onChange={(e) =>
-                updateForm("recruiter_commission", e.target.value)
+                updateForm(
+                  "recruiter_commission",
+                  e.target.value
+                )
               }
             />
           </div>
@@ -422,14 +526,34 @@ export default function SuccessfulHires() {
             <h3 style={styles.heading}>👔 Team Leader</h3>
 
             <label>Team Leader Name</label>
-            <input
+            <select
               style={inputStyle}
-              value={form.team_leader_name}
-              onChange={(e) =>
-                updateForm("team_leader_name", e.target.value)
-              }
-              placeholder="Write Team Leader name"
-            />
+              value={form.team_leader_id}
+              onChange={(e) => {
+                const selected = teamLeaders.find(
+                  (item) => item.member_id === e.target.value
+                );
+
+                setForm((previous) => ({
+                  ...previous,
+                  team_leader_id: e.target.value,
+                  team_leader_name: selected
+                    ? selected.member_name
+                    : "",
+                }));
+              }}
+            >
+              <option value="">No Team Leader</option>
+
+              {teamLeaders.map((leader) => (
+                <option
+                  key={leader.member_id}
+                  value={leader.member_id}
+                >
+                  {leader.member_name}
+                </option>
+              ))}
+            </select>
 
             <label>Team Leader Commission (EGP)</label>
             <input
@@ -439,7 +563,10 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.team_leader_commission}
               onChange={(e) =>
-                updateForm("team_leader_commission", e.target.value)
+                updateForm(
+                  "team_leader_commission",
+                  e.target.value
+                )
               }
             />
           </div>
@@ -466,7 +593,10 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.founder_commission}
               onChange={(e) =>
-                updateForm("founder_commission", e.target.value)
+                updateForm(
+                  "founder_commission",
+                  e.target.value
+                )
               }
             />
           </div>
