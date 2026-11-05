@@ -11,6 +11,7 @@ export default function CandidatesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -55,17 +56,25 @@ export default function CandidatesPage() {
       return;
     }
 
+    const user = authData.user;
+    const recruiterName =
+      user.user_metadata?.full_name ||
+      user.email ||
+      "Unknown Recruiter";
+
     const { error } = await supabase
       .from("candidates")
       .insert({
         ...form,
-        created_by: authData.user.id
+        created_by: user.id,
+        recruiter_name: recruiterName
       });
 
     if (error) {
       setMessage("Error: " + error.message);
     } else {
       setMessage("Candidate added successfully!");
+
       setForm({
         full_name: "",
         phone: "",
@@ -74,6 +83,7 @@ export default function CandidatesPage() {
         graduation_status: "Graduate",
         work_type: "WFS"
       });
+
       await loadCandidates();
     }
 
@@ -81,7 +91,7 @@ export default function CandidatesPage() {
   }
 
   const filtered = candidates.filter(candidate =>
-    `${candidate.full_name} ${candidate.phone}`
+    `${candidate.full_name} ${candidate.phone} ${candidate.recruiter_name || ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -234,7 +244,7 @@ export default function CandidatesPage() {
           style={inputStyle}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name or phone..."
+          placeholder="Search by name, phone or recruiter..."
         />
 
         {loading ? (
@@ -261,6 +271,9 @@ export default function CandidatesPage() {
               <p>Location: {candidate.location}</p>
               <p>Graduation: {candidate.graduation_status}</p>
               <p>Work Type: {candidate.work_type}</p>
+              <p style={{ color: "#d4af37" }}>
+                Added By: {candidate.recruiter_name || "Not recorded"}
+              </p>
             </article>
           ))
         )}
