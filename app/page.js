@@ -14,22 +14,13 @@ export default function Home() {
     async function loadDashboard() {
       try {
         const supabase = createClient();
-
         const { data: authData, error: authError } =
           await supabase.auth.getUser();
 
-        if (authError) {
-          setError("Authentication Error: " + authError.message);
-          setLoading(false);
-          return;
-        }
-
-        if (!authData.user) {
+        if (authError || !authData.user) {
           window.location.href = "/login";
           return;
         }
-
-        setUser(authData.user);
 
         const { data: profile, error: roleError } = await supabase
           .from("user_roles")
@@ -37,23 +28,17 @@ export default function Home() {
           .eq("id", authData.user.id)
           .maybeSingle();
 
-        if (roleError) {
-          setError("Permission Error: " + roleError.message);
+        if (roleError || !profile) {
+          setError(roleError?.message || "No role found.");
           setLoading(false);
           return;
         }
 
-        if (!profile) {
-          setError("No role record found for this account.");
-          setLoading(false);
-          return;
-        }
-
+        setUser(authData.user);
         setRole(profile.role);
         setLoading(false);
-
       } catch (err) {
-        setError("System Error: " + (err.message || "Unknown error"));
+        setError(err.message || "Something went wrong.");
         setLoading(false);
       }
     }
@@ -68,23 +53,15 @@ export default function Home() {
   }
 
   if (loading) {
-    return (
-      <main style={styles.page}>
-        <h2 style={styles.gold}>🦂 BLACK SCORPIONS</h2>
-        <p>Loading your dashboard...</p>
-      </main>
-    );
+    return <main style={styles.page}>Loading dashboard...</main>;
   }
 
   if (error) {
     return (
       <main style={styles.page}>
-        <h2 style={styles.gold}>🦂 BLACK SCORPIONS</h2>
-        <h3>Unable to load dashboard</h3>
-        <p style={styles.error}>{error}</p>
-        <button onClick={logout} style={styles.logout}>
-          LOG OUT
-        </button>
+        <h2 style={styles.gold}>BLACK SCORPIONS</h2>
+        <p>{error}</p>
+        <button onClick={logout}>Logout</button>
       </main>
     );
   }
@@ -93,19 +70,19 @@ export default function Home() {
 
   const sections = isCEO
     ? [
-        ["Dashboard", "Management overview"],
-        ["Candidates", "Manage candidate database"],
-        ["Job Offers", "Manage company vacancies"],
-        ["Recruiters", "Manage recruitment team"],
-        ["Successful Hires", "Track successful placements"],
-        ["Commissions", "Track team commissions"],
-        ["Settings", "System administration"]
+        ["Dashboard", "/", "Management overview"],
+        ["Candidates", "/candidates", "Manage candidate database"],
+        ["Job Offers", "/job-offers", "Manage company vacancies"],
+        ["Recruiters", "/recruiters", "Manage recruitment team"],
+        ["Successful Hires", "/successful-hires", "Track successful placements"],
+        ["Commissions", "/commissions", "Track team commissions"],
+        ["Settings", "/settings", "System administration"]
       ]
     : [
-        ["My Candidates", "Add and view candidates"],
-        ["Job Offers", "Explore available vacancies"],
-        ["My Hires", "Track successful placements"],
-        ["My Commissions", "Track your earnings"]
+        ["My Candidates", "/candidates", "Add and view candidates"],
+        ["Job Offers", "/job-offers", "Explore available vacancies"],
+        ["My Hires", "/successful-hires", "Track successful placements"],
+        ["My Commissions", "/commissions", "Track your earnings"]
       ];
 
   return (
@@ -117,10 +94,7 @@ export default function Home() {
 
       <section style={styles.card}>
         <p style={styles.muted}>Welcome back</p>
-        <h2>
-          {user?.user_metadata?.full_name || user?.email}
-        </h2>
-
+        <h2>{user?.user_metadata?.full_name || user?.email}</h2>
         <div style={styles.role}>
           {isCEO ? "CEO / FOUNDER" : role.toUpperCase()}
         </div>
@@ -131,11 +105,11 @@ export default function Home() {
       </h2>
 
       <section style={styles.grid}>
-        {sections.map(([title, description]) => (
-          <div key={title} style={styles.item}>
-            <h3 style={styles.gold}>{title}</h3>
+        {sections.map(([title, href, description]) => (
+          <a href={href} key={title} style={styles.item}>
+            <h3 style={styles.gold}>{title} →</h3>
             <p style={styles.muted}>{description}</p>
-          </div>
+          </a>
         ))}
       </section>
 
@@ -151,12 +125,12 @@ const styles = {
     minHeight: "100vh",
     background: "#080808",
     color: "#fff",
-    padding: "25px",
+    padding: 25,
     fontFamily: "Arial, sans-serif"
   },
   header: {
     textAlign: "center",
-    marginBottom: "35px"
+    marginBottom: 35
   },
   gold: {
     color: "#d4af37"
@@ -164,47 +138,43 @@ const styles = {
   muted: {
     color: "#999"
   },
-  error: {
-    color: "#ff6666",
-    background: "#251010",
-    padding: "15px",
-    borderRadius: "8px",
-    overflowWrap: "anywhere"
-  },
   card: {
     background: "#171717",
     border: "1px solid #d4af37",
-    borderRadius: "14px",
-    padding: "22px",
-    marginBottom: "30px"
+    borderRadius: 14,
+    padding: 22,
+    marginBottom: 30
   },
   role: {
     display: "inline-block",
     background: "#d4af37",
     color: "#000",
     padding: "8px 15px",
-    borderRadius: "6px",
+    borderRadius: 6,
     fontWeight: "bold",
-    marginTop: "10px"
+    marginTop: 10
   },
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "15px"
+    gap: 15
   },
   item: {
+    display: "block",
+    textDecoration: "none",
     background: "#171717",
     border: "1px solid #333",
-    borderRadius: "12px",
-    padding: "18px"
+    borderRadius: 12,
+    padding: 18,
+    color: "#fff"
   },
   logout: {
-    marginTop: "30px",
+    marginTop: 30,
     padding: "13px 25px",
     background: "#d4af37",
     color: "#000",
     border: "none",
-    borderRadius: "7px",
+    borderRadius: 7,
     fontWeight: "bold",
     cursor: "pointer"
   }
