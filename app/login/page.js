@@ -107,6 +107,26 @@ export default function LoginPage() {
         >
           {loading ? "Signing in..." : "LOGIN"}
         </button>
+
+        <a
+          href="/signup"
+          style={{
+            display: "block",
+            width: "100%",
+            padding: 14,
+            marginTop: 12,
+            background: "transparent",
+            color: "#d4af37",
+            border: "1px solid #d4af37",
+            borderRadius: 8,
+            fontWeight: "bold",
+            textAlign: "center",
+            textDecoration: "none",
+            boxSizing: "border-box",
+          }}
+        >
+          CREATE ACCOUNT
+        </a>
       </form>
     </main>
   );
