@@ -146,14 +146,14 @@ export default function Home() {
         ["Recruiters", "/recruiters", "Manage recruitment team"],
         ["Account Management", "/account-management", "Manage accounts and team assignments"],
         ["Successful Hires", "/successful-hires", "Track successful placements"],
-        ["Commissions", "/commissions", "Track team commissions"],
+        ["Commission Structure", "/commission-structures", "Manage offer commission rates"],
         ["Settings", "/settings", "System administration"]
       ]
     : [
         ["My Candidates", "/candidates", "Add and view candidates"],
         ["Job Offers", "/job-offers", "Explore available vacancies"],
         ["My Hires", "/successful-hires", "Track successful placements"],
-        ["My Commissions", "/commissions", "Track your earnings"]
+        ["Commission Structure", "/commission-structures", "View offer commission rates"]
       ];
 
   const recruiters = team.filter(
