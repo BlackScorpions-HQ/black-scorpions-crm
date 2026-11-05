@@ -12,31 +12,50 @@ export default function Home() {
 
   useEffect(() => {
     async function loadDashboard() {
-      const supabase = createClient();
+      try {
+        const supabase = createClient();
 
-      const { data: { user }, error: authError } =
-        await supabase.auth.getUser();
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser();
 
-      if (authError || !user) {
-        window.location.href = "/login";
-        return;
-      }
+        if (authError) {
+          setError("Authentication Error: " + authError.message);
+          setLoading(false);
+          return;
+        }
 
-      const { data: profile, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+        if (!authData.user) {
+          window.location.href = "/login";
+          return;
+        }
 
-      if (roleError || !profile) {
-        setError("Unable to load your account permissions.");
+        setUser(authData.user);
+
+        const { data: profile, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+
+        if (roleError) {
+          setError("Permission Error: " + roleError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (!profile) {
+          setError("No role record found for this account.");
+          setLoading(false);
+          return;
+        }
+
+        setRole(profile.role);
         setLoading(false);
-        return;
-      }
 
-      setUser(user);
-      setRole(profile.role);
-      setLoading(false);
+      } catch (err) {
+        setError("System Error: " + (err.message || "Unknown error"));
+        setLoading(false);
+      }
     }
 
     loadDashboard();
@@ -60,14 +79,34 @@ export default function Home() {
   if (error) {
     return (
       <main style={styles.page}>
-        <h2 style={styles.gold}>BLACK SCORPIONS</h2>
-        <p>{error}</p>
-        <button onClick={logout}>Logout</button>
+        <h2 style={styles.gold}>🦂 BLACK SCORPIONS</h2>
+        <h3>Unable to load dashboard</h3>
+        <p style={styles.error}>{error}</p>
+        <button onClick={logout} style={styles.logout}>
+          LOG OUT
+        </button>
       </main>
     );
   }
 
   const isCEO = role === "CEO";
+
+  const sections = isCEO
+    ? [
+        ["Dashboard", "Management overview"],
+        ["Candidates", "Manage candidate database"],
+        ["Job Offers", "Manage company vacancies"],
+        ["Recruiters", "Manage recruitment team"],
+        ["Successful Hires", "Track successful placements"],
+        ["Commissions", "Track team commissions"],
+        ["Settings", "System administration"]
+      ]
+    : [
+        ["My Candidates", "Add and view candidates"],
+        ["Job Offers", "Explore available vacancies"],
+        ["My Hires", "Track successful placements"],
+        ["My Commissions", "Track your earnings"]
+      ];
 
   return (
     <main style={styles.page}>
@@ -78,7 +117,9 @@ export default function Home() {
 
       <section style={styles.card}>
         <p style={styles.muted}>Welcome back</p>
-        <h2>{user?.user_metadata?.full_name || user?.email}</h2>
+        <h2>
+          {user?.user_metadata?.full_name || user?.email}
+        </h2>
 
         <div style={styles.role}>
           {isCEO ? "CEO / FOUNDER" : role.toUpperCase()}
@@ -90,23 +131,7 @@ export default function Home() {
       </h2>
 
       <section style={styles.grid}>
-        {(isCEO
-          ? [
-              ["Dashboard", "Management overview"],
-              ["Candidates", "Manage candidate database"],
-              ["Job Offers", "Manage company vacancies"],
-              ["Recruiters", "Manage recruitment team"],
-              ["Successful Hires", "Track successful placements"],
-              ["Commissions", "Track team commissions"],
-              ["Settings", "System administration"]
-            ]
-          : [
-              ["My Candidates", "Add and view candidates"],
-              ["Job Offers", "Explore available vacancies"],
-              ["My Hires", "Track successful placements"],
-              ["My Commissions", "Track your earnings"]
-            ]
-        ).map(([title, description]) => (
+        {sections.map(([title, description]) => (
           <div key={title} style={styles.item}>
             <h3 style={styles.gold}>{title}</h3>
             <p style={styles.muted}>{description}</p>
@@ -138,6 +163,13 @@ const styles = {
   },
   muted: {
     color: "#999"
+  },
+  error: {
+    color: "#ff6666",
+    background: "#251010",
+    padding: "15px",
+    borderRadius: "8px",
+    overflowWrap: "anywhere"
   },
   card: {
     background: "#171717",
