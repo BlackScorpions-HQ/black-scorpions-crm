@@ -9,6 +9,7 @@ export default function SuccessfulHires() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [isCEO, setIsCEO] = useState(false);
 
   const [hires, setHires] = useState([]);
@@ -21,13 +22,10 @@ export default function SuccessfulHires() {
     company_name: "",
     job_title: "",
     hiring_date: new Date().toISOString().split("T")[0],
-
     recruiter_name: "",
     recruiter_commission: "0",
-
     team_leader_name: "",
     team_leader_commission: "0",
-
     founder_name: "",
     founder_commission: "0",
   });
@@ -176,17 +174,13 @@ export default function SuccessfulHires() {
       candidate_name: candidate.full_name,
       company_name: form.company_name.trim(),
       job_title: form.job_title.trim() || null,
-
       recruiter_id: null,
       recruiter_name: form.recruiter_name.trim(),
-
       team_leader_id: null,
       team_leader_name: form.team_leader_name.trim() || null,
-
       recruiter_commission: recruiterCommission,
       team_leader_commission: teamLeaderCommission,
       founder_commission: founderCommission,
-
       hiring_date: form.hiring_date,
     };
 
@@ -251,19 +245,49 @@ export default function SuccessfulHires() {
       company_name: "",
       job_title: "",
       hiring_date: new Date().toISOString().split("T")[0],
-
       recruiter_name: "",
       recruiter_commission: "0",
-
       team_leader_name: "",
       team_leader_commission: "0",
-
       founder_name: form.founder_name,
       founder_commission: "0",
     });
 
     await loadPage();
     setSaving(false);
+  }
+
+  async function deleteHire(hire) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the successful hire for ${hire.candidate_name} at ${hire.company_name}?\n\nAll commissions linked to this hire will also be deleted.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(hire.id);
+    setMessage("");
+    setError("");
+
+    const { error: deleteError } = await supabase
+      .from("successful_hires")
+      .delete()
+      .eq("id", hire.id);
+
+    if (deleteError) {
+      setError("Could not delete hire: " + deleteError.message);
+      setDeletingId(null);
+      return;
+    }
+
+    setHires((previous) =>
+      previous.filter((item) => item.id !== hire.id)
+    );
+
+    setMessage(
+      "Successful Hire and its linked commissions deleted successfully."
+    );
+
+    setDeletingId(null);
   }
 
   const inputStyle = {
@@ -477,6 +501,7 @@ export default function SuccessfulHires() {
                   <th>Team Leader</th>
                   <th>Founder Commission</th>
                   <th>Date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
 
@@ -489,6 +514,18 @@ export default function SuccessfulHires() {
                     <td>{hire.team_leader_name || "—"}</td>
                     <td>{hire.founder_commission} EGP</td>
                     <td>{hire.hiring_date}</td>
+                    <td>
+                      <button
+                        type="button"
+                        disabled={deletingId === hire.id}
+                        onClick={() => deleteHire(hire)}
+                        style={styles.deleteButton}
+                      >
+                        {deletingId === hire.id
+                          ? "Deleting..."
+                          : "🗑️ Delete"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -537,6 +574,16 @@ const styles = {
     fontWeight: "bold",
     border: "none",
     borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  deleteButton: {
+    padding: "9px 13px",
+    background: "#7f1d1d",
+    color: "#fff",
+    fontWeight: "bold",
+    border: "1px solid #ef4444",
+    borderRadius: "7px",
     cursor: "pointer",
   },
 
