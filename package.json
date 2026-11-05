@@ -1,3 +1,4 @@
+
 {
   "name": "black-scorpions-crm",
   "version": "1.0.0",
@@ -5,7 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "next": "15.5.6",
@@ -13,5 +16,9 @@
     "react-dom": "19.1.1",
     "@supabase/supabase-js": "^2.57.0",
     "@supabase/ssr": "^0.7.0"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.16",
+    "wrangler": "^4.68.0"
   }
 }
