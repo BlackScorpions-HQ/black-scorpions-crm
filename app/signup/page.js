@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 
 export default function SignupPage() {
@@ -9,9 +9,30 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [teamLeader, setTeamLeader] = useState("");
+  const [teamLeaders, setTeamLeaders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingLeaders, setLoadingLeaders] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const [supabase] = useState(() => createClient());
+
+  useEffect(() => {
+    async function loadTeamLeaders() {
+      const { data, error } = await supabase.rpc("get_team_leaders");
+
+      if (error) {
+        setError("Unable to load Team Leaders: " + error.message);
+      } else {
+        setTeamLeaders(data || []);
+      }
+
+      setLoadingLeaders(false);
+    }
+
+    loadTeamLeaders();
+  }, [supabase]);
 
   async function handleSignup(e) {
     e.preventDefault();
@@ -19,16 +40,21 @@ export default function SignupPage() {
     setMessage("");
     setError("");
 
-    try {
-      const supabase = createClient();
+    if (!teamLeader) {
+      setError("Please choose your Team Leader.");
+      setLoading(false);
+      return;
+    }
 
+    try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: name,
-            phone: phone
+            phone: phone,
+            team_leader_id: teamLeader
           }
         }
       });
@@ -125,6 +151,33 @@ export default function SignupPage() {
           placeholder="Minimum 8 characters"
         />
 
+        <label>Choose Your Team Leader</label>
+        <select
+          value={teamLeader}
+          onChange={e => setTeamLeader(e.target.value)}
+          required
+          disabled={loadingLeaders || teamLeaders.length === 0}
+          style={inputStyle}
+        >
+          <option value="">
+            {loadingLeaders
+              ? "Loading Team Leaders..."
+              : "Select Your Team Leader"}
+          </option>
+
+          {teamLeaders.map(leader => (
+            <option key={leader.id} value={leader.id}>
+              {leader.full_name} ({leader.role})
+            </option>
+          ))}
+        </select>
+
+        {!loadingLeaders && teamLeaders.length === 0 && (
+          <p style={{ color: "#ff5555", fontSize: 13 }}>
+            No Team Leaders available.
+          </p>
+        )}
+
         {error && (
           <p style={{ color: "#ff5555" }}>{error}</p>
         )}
@@ -135,7 +188,7 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || loadingLeaders || teamLeaders.length === 0}
           style={{
             width: "100%",
             padding: 14,
