@@ -1,11 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 
 export default function LoginPage() {
-  const supabase = createClient();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,39 +15,51 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
 
-    if (error) {
-      setError(error.message);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = "/";
+    } catch (err) {
+      setError(err.message || "Something went wrong.");
       setLoading(false);
-      return;
     }
-
-    window.location.href = "/";
   }
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: "#080808",
-      color: "white",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "Arial",
-      padding: 20
-    }}>
-      <form onSubmit={handleLogin} style={{
-        width: "100%",
-        maxWidth: 400,
-        background: "#151515",
-        border: "1px solid #d4af37",
-        borderRadius: 15,
-        padding: 30
-      }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#080808",
+        color: "white",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Arial",
+        padding: 20,
+      }}
+    >
+      <form
+        onSubmit={handleLogin}
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          background: "#151515",
+          border: "1px solid #d4af37",
+          borderRadius: 15,
+          padding: 30,
+        }}
+      >
         <h1 style={{ color: "#d4af37", textAlign: "center" }}>
           🦂 BLACK SCORPIONS
         </h1>
@@ -61,7 +72,7 @@ export default function LoginPage() {
         <input
           type="email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           required
           style={inputStyle}
         />
@@ -70,7 +81,7 @@ export default function LoginPage() {
         <input
           type="password"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           required
           style={inputStyle}
         />
@@ -91,7 +102,7 @@ export default function LoginPage() {
             borderRadius: 8,
             fontWeight: "bold",
             cursor: "pointer",
-            marginTop: 15
+            marginTop: 15,
           }}
         >
           {loading ? "Signing in..." : "LOGIN"}
@@ -110,5 +121,5 @@ const inputStyle = {
   color: "white",
   border: "1px solid #444",
   borderRadius: 7,
-  boxSizing: "border-box"
+  boxSizing: "border-box",
 };
