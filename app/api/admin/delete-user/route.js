@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "edge";
-
 export async function POST(request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -19,7 +17,8 @@ export async function POST(request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const publishableKey =
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
       return NextResponse.json(
@@ -28,7 +27,7 @@ export async function POST(request) {
       );
     }
 
-    // Verify the logged-in user
+    // Verify the current user's session
     const authClient = createClient(
       supabaseUrl,
       publishableKey,
@@ -52,7 +51,7 @@ export async function POST(request) {
       );
     }
 
-    // Admin client - server side only
+    // Create server-side admin client
     const admin = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -64,7 +63,7 @@ export async function POST(request) {
       }
     );
 
-    // Confirm the requester is CEO
+    // Only CEO can delete accounts
     const { data: requester, error: requesterError } =
       await admin
         .from("user_roles")
@@ -72,10 +71,7 @@ export async function POST(request) {
         .eq("id", user.id)
         .single();
 
-    if (
-      requesterError ||
-      requester?.role !== "CEO"
-    ) {
+    if (requesterError || requester?.role !== "CEO") {
       return NextResponse.json(
         { error: "CEO access only" },
         { status: 403 }
@@ -95,7 +91,7 @@ export async function POST(request) {
       );
     }
 
-    // Prevent accidental deletion of the logged-in CEO
+    // Prevent deleting yourself
     if (targetUserId === user.id) {
       return NextResponse.json(
         { error: "You cannot delete your own account" },
@@ -103,7 +99,7 @@ export async function POST(request) {
       );
     }
 
-    // Protect other CEO accounts
+    // Check target account
     const { data: target, error: targetError } =
       await admin
         .from("user_roles")
@@ -118,6 +114,7 @@ export async function POST(request) {
       );
     }
 
+    // Protect CEO accounts
     if (target.role === "CEO") {
       return NextResponse.json(
         { error: "CEO accounts cannot be deleted here" },
@@ -125,8 +122,8 @@ export async function POST(request) {
       );
     }
 
-    // Delete auth account.
-    // Candidates remain because created_by uses ON DELETE SET NULL.
+    // Delete authentication account.
+    // Candidate records are preserved by ON DELETE SET NULL.
     const { error: deleteError } =
       await admin.auth.admin.deleteUser(targetUserId);
 
@@ -139,7 +136,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: "Account deleted. Candidate records were preserved.",
+      message: "Account deleted. Candidate records were preserved."
     });
 
   } catch (error) {
