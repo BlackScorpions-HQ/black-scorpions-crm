@@ -36,6 +36,7 @@ export default function JobOffersPage() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(null);
   const [message, setMessage] = useState("");
 
   const [job, setJob] = useState({
@@ -48,13 +49,13 @@ export default function JobOffersPage() {
     graduation_status: "",
     experience: "",
     nationality: "Both",
+    status: "Active",
   });
 
   const isCEO = role === "CEO";
 
   async function loadOffers() {
     setLoading(true);
-    setMessage("");
 
     const { data: authData } = await supabase.auth.getUser();
     const currentUser = authData?.user;
@@ -98,11 +99,17 @@ export default function JobOffersPage() {
   }, [supabase]);
 
   function updateJob(field, value) {
-    setJob((previous) => ({ ...previous, [field]: value }));
+    setJob((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   }
 
   function updateSearch(field, value) {
-    setSearch((previous) => ({ ...previous, [field]: value }));
+    setSearch((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   }
 
   async function addJob(event) {
@@ -127,24 +134,27 @@ export default function JobOffersPage() {
 
     setSaving(true);
 
-    const { error } = await supabase.from("job_offers").insert({
-      title: job.title.trim(),
-      company: "Black Scorpions",
-      maximum_age: Number(job.maximum_age),
-      required_language: job.required_language.trim(),
-      location: job.location.trim(),
-      job_description: job.job_description.trim(),
-      job_type: job.job_type || null,
-      graduation_status: job.graduation_status || null,
-      experience: job.experience || null,
-      nationality: job.nationality || "Both",
-      status: "Active",
-    });
+    const { error } = await supabase
+      .from("job_offers")
+      .insert({
+        title: job.title.trim(),
+        company: "Black Scorpions",
+        maximum_age: Number(job.maximum_age),
+        required_language: job.required_language.trim(),
+        location: job.location.trim(),
+        job_description: job.job_description.trim(),
+        job_type: job.job_type || null,
+        graduation_status: job.graduation_status || null,
+        experience: job.experience || null,
+        nationality: job.nationality || "Both",
+        status: job.status,
+      });
 
     if (error) {
       setMessage(error.message);
     } else {
       setMessage("Job offer published successfully!");
+
       setJob({
         title: "",
         maximum_age: "",
@@ -155,11 +165,47 @@ export default function JobOffersPage() {
         graduation_status: "",
         experience: "",
         nationality: "Both",
+        status: "Active",
       });
+
       await loadOffers();
     }
 
     setSaving(false);
+  }
+
+  async function changeJobStatus(offerId, newStatus) {
+    if (!isCEO) return;
+
+    setMessage("");
+    setChangingStatus(offerId);
+
+    const { error } = await supabase
+      .from("job_offers")
+      .update({ status: newStatus })
+      .eq("id", offerId);
+
+    if (error) {
+      setMessage("Status update failed: " + error.message);
+    } else {
+      setOffers((previous) =>
+        previous.map((offer) =>
+          offer.id === offerId
+            ? { ...offer, status: newStatus }
+            : offer
+        )
+      );
+
+      setMessage(
+        newStatus === "Active"
+          ? "Job activated successfully!"
+          : "Job placed on Hold successfully!"
+      );
+
+      setResults(null);
+    }
+
+    setChangingStatus(null);
   }
 
   function findMatches(event) {
@@ -187,6 +233,7 @@ export default function JobOffersPage() {
 
     const matches = offers.filter((offer) => {
       if (offer.status !== "Active") return false;
+
       if (age > Number(offer.maximum_age)) return false;
 
       if (
@@ -194,16 +241,19 @@ export default function JobOffersPage() {
         search.required_language.toLowerCase().trim()
       ) return false;
 
-      if (offer.job_type && offer.job_type !== search.job_type) return false;
+      if (offer.job_type && offer.job_type !== search.job_type) {
+        return false;
+      }
 
       if (
         offer.graduation_status &&
         offer.graduation_status !== search.graduation_status
       ) return false;
 
-      if (offer.experience && offer.experience !== search.experience) {
-        return false;
-      }
+      if (
+        offer.experience &&
+        offer.experience !== search.experience
+      ) return false;
 
       if (
         offer.nationality &&
@@ -221,6 +271,10 @@ export default function JobOffersPage() {
     (offer) => offer.status === "Active"
   );
 
+  const visibleOffers = isCEO
+    ? offers
+    : activeOffers;
+
   const inputStyle = {
     width: "100%",
     padding: "12px",
@@ -237,6 +291,7 @@ export default function JobOffersPage() {
     color: "#d9b64c",
     fontSize: "14px",
     fontWeight: "600",
+    display: "block",
   };
 
   const buttonStyle = {
@@ -259,6 +314,7 @@ export default function JobOffersPage() {
           type={type}
           value={value}
           placeholder={placeholder}
+          min={type === "number" ? 18 : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       </label>
@@ -274,7 +330,10 @@ export default function JobOffersPage() {
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">{placeholder || "Select..."}</option>
+          <option value="">
+            {placeholder || "Select..."}
+          </option>
+
           {options.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -286,6 +345,8 @@ export default function JobOffersPage() {
   }
 
   function offerCard(offer) {
+    const isActive = offer.status === "Active";
+
     return (
       <div
         key={offer.id}
@@ -297,9 +358,31 @@ export default function JobOffersPage() {
           marginBottom: "13px",
         }}
       >
-        <h3 style={{ color: "#e9c45b", marginTop: 0 }}>
-          {offer.title}
-        </h3>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "10px",
+        }}>
+          <h3 style={{
+            color: "#e9c45b",
+            marginTop: 0,
+          }}>
+            {offer.title}
+          </h3>
+
+          <span style={{
+            color: isActive ? "#65d69a" : "#ff5555",
+            fontWeight: "bold",
+            background: isActive ? "#10251a" : "#2b1111",
+            padding: "7px 12px",
+            borderRadius: "20px",
+          }}>
+            {isActive ? "🟢 ACTIVE" : "🔴 HOLD"}
+          </span>
+        </div>
+
         <p><b>Location:</b> {offer.location}</p>
         <p><b>Language:</b> {offer.required_language}</p>
         <p><b>Maximum Age:</b> {offer.maximum_age}</p>
@@ -307,19 +390,53 @@ export default function JobOffersPage() {
         <p><b>Graduation:</b> {offer.graduation_status || "Any"}</p>
         <p><b>Experience:</b> {offer.experience || "Any"}</p>
         <p><b>Nationality:</b> {offer.nationality || "Both"}</p>
-        <p style={{ whiteSpace: "pre-wrap", color: "#cccccc" }}>
+
+        <p style={{
+          whiteSpace: "pre-wrap",
+          color: "#cccccc",
+        }}>
           {offer.job_description}
         </p>
-        <span style={{ color: "#65d69a", fontWeight: "bold" }}>
-          ● Active
-        </span>
+
+        {isCEO && (
+          <button
+            type="button"
+            disabled={changingStatus === offer.id}
+            onClick={() =>
+              changeJobStatus(
+                offer.id,
+                isActive ? "Hold" : "Active"
+              )
+            }
+            style={{
+              ...buttonStyle,
+              background: isActive
+                ? "#8d2525"
+                : "#176b3a",
+              color: "#ffffff",
+              marginTop: "10px",
+              opacity: changingStatus === offer.id ? 0.6 : 1,
+            }}
+          >
+            {changingStatus === offer.id
+              ? "Updating..."
+              : isActive
+                ? "🔴 Put On Hold"
+                : "🟢 Activate Job"}
+          </button>
+        )}
       </div>
     );
   }
 
   if (loading) {
     return (
-      <main style={{ background: "#080808", color: "#e9c45b", minHeight: "100vh", padding: 30 }}>
+      <main style={{
+        background: "#080808",
+        color: "#e9c45b",
+        minHeight: "100vh",
+        padding: 30,
+      }}>
         Loading Job Offers...
       </main>
     );
@@ -333,8 +450,14 @@ export default function JobOffersPage() {
       padding: "20px",
       fontFamily: "Arial, sans-serif",
     }}>
-      <div style={{ maxWidth: "850px", margin: "auto" }}>
-        <h1 style={{ color: "#e9c45b" }}>🦂 Job Offers</h1>
+      <div style={{
+        maxWidth: "850px",
+        margin: "auto",
+      }}>
+        <h1 style={{ color: "#e9c45b" }}>
+          🦂 Job Offers
+        </h1>
+
         <p style={{ color: "#aaaaaa" }}>
           BLACK SCORPIONS | Smart Job Matching
         </p>
@@ -360,30 +483,97 @@ export default function JobOffersPage() {
             padding: "18px",
             marginBottom: "28px",
           }}>
-            <h2 style={{ color: "#e9c45b" }}>+ Publish New Job</h2>
+            <h2 style={{ color: "#e9c45b" }}>
+              + Publish New Job
+            </h2>
 
             <form onSubmit={addJob}>
-              {field("Job Title *", job.title, (v) => updateJob("title", v), "Job title")}
-              {field("Maximum Age *", job.maximum_age, (v) => updateJob("maximum_age", v), "18+", "number")}
-              {field("Language *", job.required_language, (v) => updateJob("required_language", v), "Example: English B2")}
-              {field("Location *", job.location, (v) => updateJob("location", v), "Example: Maadi")}
+              {field(
+                "Job Title *",
+                job.title,
+                (v) => updateJob("title", v),
+                "Job title"
+              )}
 
-              {dropdown("Job Type", job.job_type, (v) => updateJob("job_type", v), ["WFS", "WFH"], "Any")}
-              {dropdown("Graduation Status", job.graduation_status, (v) => updateJob("graduation_status", v), graduationOptions, "Any")}
-              {dropdown("Experience", job.experience, (v) => updateJob("experience", v), experienceOptions, "Any")}
-              {dropdown("Nationality", job.nationality, (v) => updateJob("nationality", v), ["Both", "Egyptian", "Foreigner"], "Select nationality")}
+              {field(
+                "Maximum Age *",
+                job.maximum_age,
+                (v) => updateJob("maximum_age", v),
+                "18+",
+                "number"
+              )}
+
+              {field(
+                "Language *",
+                job.required_language,
+                (v) => updateJob("required_language", v),
+                "Example: English B2"
+              )}
+
+              {field(
+                "Location *",
+                job.location,
+                (v) => updateJob("location", v),
+                "Example: Maadi"
+              )}
+
+              {dropdown(
+                "Job Type",
+                job.job_type,
+                (v) => updateJob("job_type", v),
+                ["WFS", "WFH"],
+                "Any"
+              )}
+
+              {dropdown(
+                "Graduation Status",
+                job.graduation_status,
+                (v) => updateJob("graduation_status", v),
+                graduationOptions,
+                "Any"
+              )}
+
+              {dropdown(
+                "Experience",
+                job.experience,
+                (v) => updateJob("experience", v),
+                experienceOptions,
+                "Any"
+              )}
+
+              {dropdown(
+                "Nationality",
+                job.nationality,
+                (v) => updateJob("nationality", v),
+                ["Both", "Egyptian", "Foreigner"]
+              )}
+
+              {dropdown(
+                "Job Status *",
+                job.status,
+                (v) => updateJob("status", v),
+                ["Active", "Hold"]
+              )}
 
               <label style={labelStyle}>
                 Job Description *
                 <textarea
-                  style={{ ...inputStyle, minHeight: "110px" }}
+                  style={{
+                    ...inputStyle,
+                    minHeight: "110px",
+                  }}
                   value={job.job_description}
-                  onChange={(e) => updateJob("job_description", e.target.value)}
+                  onChange={(e) =>
+                    updateJob("job_description", e.target.value)
+                  }
                   placeholder="Write job details..."
                 />
               </label>
 
-              <button style={buttonStyle} disabled={saving}>
+              <button
+                style={buttonStyle}
+                disabled={saving}
+              >
                 {saving ? "Publishing..." : "Publish Job Offer"}
               </button>
             </form>
@@ -397,20 +587,61 @@ export default function JobOffersPage() {
           padding: "18px",
           marginBottom: "28px",
         }}>
-          <h2 style={{ color: "#e9c45b" }}>🔎 Smart Job Matching</h2>
+          <h2 style={{ color: "#e9c45b" }}>
+            🔎 Smart Job Matching
+          </h2>
+
           <p style={{ color: "#aaaaaa" }}>
             Search for suitable active jobs using candidate details.
           </p>
 
           <form onSubmit={findMatches}>
-            {field("Candidate Age *", search.age, (v) => updateSearch("age", v), "Minimum 18", "number")}
-            {dropdown("Job Type *", search.job_type, (v) => updateSearch("job_type", v), ["WFS", "WFH"])}
-            {dropdown("Graduation Status *", search.graduation_status, (v) => updateSearch("graduation_status", v), graduationOptions)}
-            {field("Language *", search.required_language, (v) => updateSearch("required_language", v), "Example: English B2")}
-            {dropdown("Experience *", search.experience, (v) => updateSearch("experience", v), experienceOptions)}
-            {dropdown("Nationality *", search.nationality, (v) => updateSearch("nationality", v), ["Egyptian", "Foreigner"])}
+            {field(
+              "Candidate Age *",
+              search.age,
+              (v) => updateSearch("age", v),
+              "Minimum 18",
+              "number"
+            )}
 
-            <button style={buttonStyle}>Find Matching Jobs</button>
+            {dropdown(
+              "Job Type *",
+              search.job_type,
+              (v) => updateSearch("job_type", v),
+              ["WFS", "WFH"]
+            )}
+
+            {dropdown(
+              "Graduation Status *",
+              search.graduation_status,
+              (v) => updateSearch("graduation_status", v),
+              graduationOptions
+            )}
+
+            {field(
+              "Language *",
+              search.required_language,
+              (v) => updateSearch("required_language", v),
+              "Example: English B2"
+            )}
+
+            {dropdown(
+              "Experience *",
+              search.experience,
+              (v) => updateSearch("experience", v),
+              experienceOptions
+            )}
+
+            {dropdown(
+              "Nationality *",
+              search.nationality,
+              (v) => updateSearch("nationality", v),
+              ["Egyptian", "Foreigner"]
+            )}
+
+            <button style={buttonStyle}>
+              Find Matching Jobs
+            </button>
           </form>
 
           {results !== null && (
@@ -418,8 +649,11 @@ export default function JobOffersPage() {
               <h3 style={{ color: "#e9c45b" }}>
                 Matching Results: {results.length}
               </h3>
+
               {results.length === 0 ? (
-                <p style={{ color: "#cccccc" }}>No matching jobs found.</p>
+                <p style={{ color: "#cccccc" }}>
+                  No matching jobs found.
+                </p>
               ) : (
                 results.map(offerCard)
               )}
@@ -429,12 +663,16 @@ export default function JobOffersPage() {
 
         <section>
           <h2 style={{ color: "#e9c45b" }}>
-            All Active Job Offers ({activeOffers.length})
+            {isCEO ? "All Job Offers" : "Active Job Offers"}
+            {" "}({visibleOffers.length})
           </h2>
-          {activeOffers.length === 0 ? (
-            <p style={{ color: "#aaaaaa" }}>No active offers yet.</p>
+
+          {visibleOffers.length === 0 ? (
+            <p style={{ color: "#aaaaaa" }}>
+              No job offers found.
+            </p>
           ) : (
-            activeOffers.map(offerCard)
+            visibleOffers.map(offerCard)
           )}
         </section>
       </div>
