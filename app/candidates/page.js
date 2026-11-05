@@ -6,10 +6,13 @@ import { createClient } from "../../utils/supabase/client";
 
 export default function CandidatesPage() {
   const [supabase] = useState(() => createClient());
+
   const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [role, setRole] = useState("");
   const [message, setMessage] = useState("");
 
   const [form, setForm] = useState({
@@ -21,9 +24,33 @@ export default function CandidatesPage() {
     work_type: "WFS"
   });
 
-  async function loadCandidates() {
+  async function initialize() {
     setLoading(true);
+    setMessage("");
 
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      setMessage("Please log in again.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: userRole, error: roleError } =
+      await supabase.rpc("current_user_role");
+
+    if (roleError) {
+      setMessage("Role Error: " + roleError.message);
+      setLoading(false);
+      return;
+    }
+
+    setRole(userRole || "");
+    await loadCandidates();
+  }
+
+  async function loadCandidates() {
     const { data, error } = await supabase
       .from("candidates")
       .select("*")
@@ -39,7 +66,7 @@ export default function CandidatesPage() {
   }
 
   useEffect(() => {
-    loadCandidates();
+    initialize();
   }, []);
 
   async function addCandidate(e) {
@@ -57,6 +84,7 @@ export default function CandidatesPage() {
     }
 
     const user = authData.user;
+
     const recruiterName =
       user.user_metadata?.full_name ||
       user.email ||
@@ -88,6 +116,39 @@ export default function CandidatesPage() {
     }
 
     setSaving(false);
+  }
+
+  async function deleteCandidate(candidate) {
+    if (role !== "CEO") {
+      setMessage("Only the CEO can delete candidates.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${candidate.full_name}?`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(candidate.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("candidates")
+      .delete()
+      .eq("id", candidate.id);
+
+    if (error) {
+      setMessage("Delete Error: " + error.message);
+    } else {
+      setCandidates(previous =>
+        previous.filter(item => item.id !== candidate.id)
+      );
+
+      setMessage("Candidate deleted successfully!");
+    }
+
+    setDeletingId(null);
   }
 
   const filtered = candidates.filter(candidate =>
@@ -126,6 +187,10 @@ export default function CandidatesPage() {
 
       <p style={{ color: "#999" }}>
         Candidate Management Database
+      </p>
+
+      <p style={{ color: "#d4af37" }}>
+        Your Role: {role || "Loading..."}
       </p>
 
       <section style={{
@@ -221,7 +286,8 @@ export default function CandidatesPage() {
               color: "#000",
               border: "none",
               borderRadius: 8,
-              fontWeight: "bold"
+              fontWeight: "bold",
+              cursor: "pointer"
             }}
           >
             {saving ? "Saving..." : "ADD CANDIDATE"}
@@ -229,7 +295,10 @@ export default function CandidatesPage() {
         </form>
 
         {message && (
-          <p style={{ color: "#d4af37", overflowWrap: "anywhere" }}>
+          <p style={{
+            color: message.includes("Error") ? "#ff6666" : "#d4af37",
+            overflowWrap: "anywhere"
+          }}>
             {message}
           </p>
         )}
@@ -237,7 +306,7 @@ export default function CandidatesPage() {
 
       <section style={{ marginTop: 30 }}>
         <h2 style={{ color: "#d4af37" }}>
-          All Candidates ({filtered.length})
+          Candidates ({filtered.length})
         </h2>
 
         <input
@@ -266,14 +335,40 @@ export default function CandidatesPage() {
               <h3 style={{ color: "#d4af37" }}>
                 {candidate.full_name}
               </h3>
+
               <p>Phone: {candidate.phone}</p>
               <p>English: {candidate.english_level}</p>
               <p>Location: {candidate.location}</p>
               <p>Graduation: {candidate.graduation_status}</p>
               <p>Work Type: {candidate.work_type}</p>
+
               <p style={{ color: "#d4af37" }}>
                 Added By: {candidate.recruiter_name || "Not recorded"}
               </p>
+
+              {role === "CEO" && (
+                <button
+                  type="button"
+                  onClick={() => deleteCandidate(candidate)}
+                  disabled={deletingId === candidate.id}
+                  style={{
+                    background: "#b91c1c",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 7,
+                    padding: "10px 16px",
+                    fontWeight: "bold",
+                    cursor: deletingId === candidate.id
+                      ? "not-allowed"
+                      : "pointer",
+                    opacity: deletingId === candidate.id ? 0.6 : 1
+                  }}
+                >
+                  {deletingId === candidate.id
+                    ? "Deleting..."
+                    : "🗑️ DELETE CANDIDATE"}
+                </button>
+              )}
             </article>
           ))
         )}
