@@ -20,6 +20,18 @@ export default function CommissionStructures() {
 
   const isCEO = role === "CEO";
 
+  function calculateTotal(entry) {
+    return (
+      (Number(entry.recruiter_commission) || 0) +
+      (Number(entry.team_leader_commission) || 0) +
+      (Number(entry.founder_commission) || 0)
+    );
+  }
+
+  function formatMoney(amount) {
+    return `${amount.toLocaleString("en-US")} EGP`;
+  }
+
   async function loadEntries() {
     setLoading(true);
     setMessage("");
@@ -173,6 +185,14 @@ export default function CommissionStructures() {
     marginBottom: "14px",
   };
 
+  const totalStyle = {
+    background: "#292313",
+    border: "1px solid #d4a72c",
+    borderRadius: "10px",
+    padding: "14px",
+    textAlign: "center",
+  };
+
   if (loading) {
     return (
       <main style={{
@@ -304,10 +324,28 @@ export default function CommissionStructures() {
               />
             </div>
 
+            <div style={{ ...totalStyle, marginTop: "14px" }}>
+              <div style={{ color: "#aaa", fontSize: "12px" }}>
+                TOTAL COMMISSION
+              </div>
+              <strong style={{
+                color: "#d4a72c",
+                fontSize: "23px",
+                display: "block",
+                marginTop: "5px",
+              }}>
+                {formatMoney(calculateTotal(newEntry))}
+              </strong>
+            </div>
+
             <button
               onClick={addEntry}
               disabled={saving}
-              style={{ ...goldButton, marginTop: "14px", opacity: saving ? 0.6 : 1 }}
+              style={{
+                ...goldButton,
+                marginTop: "14px",
+                opacity: saving ? 0.6 : 1,
+              }}
             >
               {saving ? "Saving..." : "+ Add Offer"}
             </button>
@@ -397,6 +435,20 @@ export default function CommissionStructures() {
                       )}
                     />
                   </div>
+                </div>
+
+                <div style={{ ...totalStyle, marginTop: "14px" }}>
+                  <div style={{ color: "#aaa", fontSize: "12px" }}>
+                    TOTAL COMMISSION
+                  </div>
+                  <strong style={{
+                    color: "#d4a72c",
+                    fontSize: "23px",
+                    display: "block",
+                    marginTop: "5px",
+                  }}>
+                    {formatMoney(calculateTotal(entry))}
+                  </strong>
                 </div>
 
                 {isCEO && (
