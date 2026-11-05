@@ -4,8 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace(/^Bearer\s+/i, "");
+    const token = request.headers
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "");
 
     if (!token) {
       return NextResponse.json(
@@ -27,7 +28,6 @@ export async function POST(request) {
       );
     }
 
-    // Verify session
     const authClient = createClient(
       supabaseUrl,
       publishableKey,
@@ -51,7 +51,6 @@ export async function POST(request) {
       );
     }
 
-    // Admin client
     const admin = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -63,19 +62,34 @@ export async function POST(request) {
       }
     );
 
-    // CEO only
     const { data: requester, error: requesterError } =
       await admin
         .from("user_roles")
-        .select("role")
+        .select("id, role")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-    if (requesterError || requester?.role !== "CEO") {
-      return NextResponse.json(
-        { error: "CEO access only" },
-        { status: 403 }
-      );
+    if (requesterError) {
+      return NextResponse.json({
+        diagnostic: "ROLE_QUERY_ERROR",
+        error: requesterError.message,
+        code: requesterError.code,
+      }, { status: 500 });
+    }
+
+    if (!requester) {
+      return NextResponse.json({
+        diagnostic: "ROLE_NOT_FOUND",
+        message: "No user_roles row matches the authenticated account."
+      }, { status: 403 });
+    }
+
+    if (requester.role !== "CEO") {
+      return NextResponse.json({
+        diagnostic: "ROLE_MISMATCH",
+        actualRole: requester.role,
+        message: "Authenticated account does not have CEO role."
+      }, { status: 403 });
     }
 
     const body = await request.json();
@@ -92,7 +106,6 @@ export async function POST(request) {
       );
     }
 
-    // Check recruiter
     const { data: recruiter, error: recruiterError } =
       await admin
         .from("user_roles")
@@ -114,7 +127,6 @@ export async function POST(request) {
       );
     }
 
-    // Empty team leader ID means assign directly to CEO
     let newLeaderId = null;
 
     if (teamLeaderId !== null && teamLeaderId !== "") {
@@ -146,7 +158,6 @@ export async function POST(request) {
       newLeaderId = leader.id;
     }
 
-    // Update team assignment
     const { error: updateError } = await admin
       .from("user_roles")
       .update({ team_leader_id: newLeaderId })
