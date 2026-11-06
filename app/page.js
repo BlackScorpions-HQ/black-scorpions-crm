@@ -4,6 +4,52 @@
 import { useEffect, useState } from "react";
 import { createClient } from "../utils/supabase/client";
 
+function ScorpionMark({ size = 34 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        verticalAlign: "middle",
+        filter: "drop-shadow(0 0 6px rgba(212,175,55,.6))"
+      }}
+    >
+      <defs>
+        <linearGradient id="scorpionGold" x1="20" y1="15" x2="80" y2="95">
+          <stop stopColor="#fff0a6" />
+          <stop offset=".45" stopColor="#d4af37" />
+          <stop offset="1" stopColor="#8d6418" />
+        </linearGradient>
+      </defs>
+
+      <g
+        stroke="url(#scorpionGold)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M48 48 C35 35 38 22 49 17 C61 12 72 22 65 31 C59 39 49 34 53 27" />
+        <path d="M46 48 C36 42 28 47 25 56 L18 64" />
+        <path d="M54 48 C65 42 74 47 77 56 L84 64" />
+        <path d="M43 51 L31 44 L23 48" />
+        <path d="M57 51 L69 44 L77 48" />
+        <path d="M43 57 L28 69 L19 68" />
+        <path d="M57 57 L72 69 L81 68" />
+        <path d="M45 63 L36 78 L28 81" />
+        <path d="M55 63 L64 78 L72 81" />
+        <path d="M50 38 L50 70" />
+        <path d="M50 70 C47 80 52 87 62 88" />
+        <path d="M62 88 L69 81" />
+        <path d="M62 88 L69 94" />
+        <path d="M40 48 L50 43 L60 48 L63 59 L55 68 L45 68 L37 59 Z" />
+      </g>
+    </svg>
+  );
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -122,15 +168,27 @@ export default function Home() {
   }
 
   if (loading) {
-    return <main style={styles.page}>Loading dashboard...</main>;
+    return (
+      <main style={styles.page}>
+        <div style={styles.loading}>
+          <ScorpionMark size={48} />
+          <h2 style={styles.gold}>BLACK SCORPIONS</h2>
+          <p style={styles.muted}>Loading dashboard...</p>
+        </div>
+      </main>
+    );
   }
 
   if (error) {
     return (
       <main style={styles.page}>
-        <h2 style={styles.gold}>BLACK SCORPIONS</h2>
-        <p>{error}</p>
-        <button onClick={logout}>Logout</button>
+        <h2 style={styles.gold}>
+          <ScorpionMark /> BLACK SCORPIONS
+        </h2>
+        <p style={styles.error}>{error}</p>
+        <button onClick={logout} style={styles.logout}>
+          LOG OUT
+        </button>
       </main>
     );
   }
@@ -221,13 +279,22 @@ export default function Home() {
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <h1 style={styles.gold}>🦂 BLACK SCORPIONS</h1>
-        <p style={styles.muted}>Recruitment Management System</p>
+        <div style={styles.logo}>
+          <ScorpionMark size={55} />
+          <h1 style={styles.logoTitle}>BLACK SCORPIONS</h1>
+        </div>
+
+        <p style={styles.muted}>
+          RECRUITMENT MANAGEMENT SYSTEM
+        </p>
+
+        <div style={styles.goldLine} />
       </header>
 
       <section style={styles.card}>
-        <p style={styles.muted}>Welcome back</p>
-        <h2>
+        <p style={styles.muted}>WELCOME BACK</p>
+
+        <h2 style={styles.welcomeName}>
           {user?.user_metadata?.full_name || user?.email}
         </h2>
 
@@ -236,12 +303,13 @@ export default function Home() {
         </div>
       </section>
 
-      <h2 style={styles.gold}>
+      <h2 style={styles.sectionTitle}>
+        <ScorpionMark size={28} />
         {isCEO
-          ? "CEO Dashboard"
+          ? " CEO Dashboard"
           : isTeamLeader
-          ? "Team Leader Dashboard"
-          : "Recruiter Dashboard"}
+          ? " Team Leader Dashboard"
+          : " Recruiter Dashboard"}
       </h2>
 
       <section style={styles.grid}>
@@ -256,8 +324,15 @@ export default function Home() {
                 : {})
             }}
           >
-            <h3 style={styles.gold}>{title} →</h3>
+            <div style={styles.itemHeading}>
+              <ScorpionMark size={25} />
+              <h3 style={styles.itemTitle}>{title}</h3>
+              <span style={styles.arrow}>↗</span>
+            </div>
+
             <p style={styles.muted}>{description}</p>
+
+            <div style={styles.itemLine} />
           </a>
         ))}
       </section>
@@ -265,8 +340,9 @@ export default function Home() {
       {(isCEO || isTeamLeader) && (
         <>
           <section style={styles.teamSection}>
-            <h2 style={styles.gold}>
-              {isCEO ? "🏆 Company Overview" : "👥 My Team Overview"}
+            <h2 style={styles.sectionTitle}>
+              <ScorpionMark size={29} />
+              {isCEO ? " Company Overview" : " My Team Overview"}
             </h2>
 
             <p style={styles.muted}>
@@ -285,28 +361,28 @@ export default function Home() {
               <>
                 <div style={styles.stats}>
                   <div style={styles.statCard}>
-                    <h2 style={styles.gold}>
+                    <h2 style={styles.statNumber}>
                       {recruiters.length}
                     </h2>
                     <p style={styles.muted}>Total Recruiters</p>
                   </div>
 
                   <div style={styles.statCard}>
-                    <h2 style={styles.gold}>
+                    <h2 style={styles.statNumber}>
                       {totalCandidates}
                     </h2>
                     <p style={styles.muted}>Total Candidates</p>
                   </div>
 
                   <div style={styles.statCard}>
-                    <h2 style={styles.gold}>
+                    <h2 style={styles.statNumber}>
                       {hires.length}
                     </h2>
                     <p style={styles.muted}>Successful Hires</p>
                   </div>
 
                   <div style={styles.statCard}>
-                    <h2 style={styles.gold}>
+                    <h2 style={styles.statNumber}>
                       {totalTeamCommissions.toLocaleString()} EGP
                     </h2>
                     <p style={styles.muted}>Team Commissions</p>
@@ -315,14 +391,14 @@ export default function Home() {
 
                 <div style={styles.stats}>
                   <div style={styles.statCard}>
-                    <h3 style={{ color: "#facc15" }}>
+                    <h3 style={{ color: "#f2d477" }}>
                       {totalPendingCommissions.toLocaleString()} EGP
                     </h3>
                     <p style={styles.muted}>Pending Commissions</p>
                   </div>
 
                   <div style={styles.statCard}>
-                    <h3 style={{ color: "#4ade80" }}>
+                    <h3 style={{ color: "#65d69a" }}>
                       {totalPaidCommissions.toLocaleString()} EGP
                     </h3>
                     <p style={styles.muted}>Paid Commissions</p>
@@ -340,8 +416,9 @@ export default function Home() {
 
           {!analyticsError && !teamError && (
             <section style={styles.teamSection}>
-              <h2 style={styles.gold}>
-                📊 Recruiter Performance
+              <h2 style={styles.sectionTitle}>
+                <ScorpionMark size={29} />
+                Recruiter Performance
               </h2>
 
               {recruiterPerformance.length === 0 ? (
@@ -392,8 +469,9 @@ export default function Home() {
           )}
 
           <section style={styles.teamSection}>
-            <h2 style={styles.gold}>
-              {isCEO ? "🏆 Company Teams" : "👥 My Team"}
+            <h2 style={styles.sectionTitle}>
+              <ScorpionMark size={29} />
+              {isCEO ? " Company Teams" : " My Team"}
             </h2>
 
             <p style={styles.muted}>
@@ -461,8 +539,14 @@ export default function Home() {
       )}
 
       <button onClick={logout} style={styles.logout}>
-        LOG OUT
+        <ScorpionMark size={23} /> LOG OUT
       </button>
+
+      <footer style={styles.footer}>
+        <ScorpionMark size={22} />
+        <p>BLACK SCORPIONS</p>
+        <span>POWER • PRECISION • PERFORMANCE</span>
+      </footer>
     </main>
   );
 }
@@ -470,86 +554,173 @@ export default function Home() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#080808",
+    background: "transparent",
     color: "#fff",
     padding: 25,
     fontFamily: "Arial, sans-serif"
   },
 
+  loading: {
+    minHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 15
+  },
+
   header: {
     textAlign: "center",
-    marginBottom: 35
+    marginBottom: 35,
+    padding: "25px 10px"
+  },
+
+  logo: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    flexWrap: "wrap"
+  },
+
+  logoTitle: {
+    color: "#f2d477",
+    fontSize: "clamp(24px, 5vw, 38px)",
+    letterSpacing: "2px",
+    textShadow: "0 0 15px rgba(212,175,55,.4)"
   },
 
   gold: {
-    color: "#d4af37"
+    color: "#f2d477",
+    textShadow: "0 0 12px rgba(212,175,55,.35)",
+    letterSpacing: "1px"
   },
 
   muted: {
-    color: "#999"
+    color: "#aaa",
+    lineHeight: 1.6
+  },
+
+  goldLine: {
+    width: 150,
+    height: 2,
+    margin: "18px auto 0",
+    background: "linear-gradient(90deg,transparent,#d4af37,transparent)"
   },
 
   card: {
-    background: "#171717",
-    border: "1px solid #d4af37",
-    borderRadius: 14,
+    background: "linear-gradient(145deg,rgba(20,20,20,.96),rgba(5,5,5,.96))",
+    border: "1px solid #a9822b",
+    borderRadius: 15,
     padding: 22,
-    marginBottom: 30
+    marginBottom: 30,
+    boxShadow: "0 0 18px rgba(212,175,55,.12),inset 0 0 15px rgba(212,175,55,.04)"
+  },
+
+  welcomeName: {
+    marginTop: 8,
+    overflowWrap: "anywhere"
   },
 
   role: {
     display: "inline-block",
-    background: "#d4af37",
-    color: "#000",
-    padding: "8px 15px",
-    borderRadius: 6,
-    fontWeight: "bold",
-    marginTop: 10
+    background: "linear-gradient(135deg,#fff0a6,#d4af37,#98701e)",
+    color: "#080808",
+    padding: "9px 17px",
+    borderRadius: 7,
+    fontWeight: "900",
+    marginTop: 12,
+    boxShadow: "0 0 12px rgba(212,175,55,.3)"
+  },
+
+  sectionTitle: {
+    color: "#f2d477",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 18,
+    textShadow: "0 0 10px rgba(212,175,55,.25)"
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
     gap: 15
   },
 
   item: {
     display: "block",
     textDecoration: "none",
-    background: "#171717",
-    border: "1px solid #333",
-    borderRadius: 12,
-    padding: 18,
-    color: "#fff"
+    background: "linear-gradient(145deg,rgba(25,25,25,.96),rgba(5,5,5,.96))",
+    border: "1px solid #72571e",
+    borderRadius: 13,
+    padding: 20,
+    color: "#fff",
+    boxShadow: "inset 0 0 15px rgba(212,175,55,.04),0 5px 18px rgba(0,0,0,.4)"
+  },
+
+  itemHeading: {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    marginBottom: 12
+  },
+
+  itemTitle: {
+    color: "#f2d477",
+    fontSize: 17,
+    flex: 1
+  },
+
+  arrow: {
+    color: "#d4af37",
+    fontSize: 22
+  },
+
+  itemLine: {
+    height: 2,
+    marginTop: 16,
+    background: "linear-gradient(90deg,#8d6418,#f2d477,transparent)"
   },
 
   adminItem: {
-    border: "1px solid #d4af37",
-    background: "linear-gradient(135deg, #211b0d, #171717)",
-    boxShadow: "0 0 12px rgba(212,175,55,0.12)"
+    border: "1px solid #e0b943",
+    background: "linear-gradient(135deg,rgba(54,40,10,.95),rgba(10,10,10,.98))",
+    boxShadow: "0 0 16px rgba(212,175,55,.18)"
   },
 
   teamSection: {
     marginTop: 35,
     padding: 20,
-    background: "#171717",
-    border: "1px solid #d4af37",
-    borderRadius: 14
+    background: "linear-gradient(145deg,rgba(20,20,20,.96),rgba(5,5,5,.96))",
+    border: "1px solid #a9822b",
+    borderRadius: 15,
+    boxShadow: "0 0 18px rgba(212,175,55,.1)"
   },
 
   stats: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
     gap: 12,
     margin: "20px 0"
   },
 
   statCard: {
-    background: "#222",
-    borderRadius: 10,
-    padding: 15,
+    background: "linear-gradient(145deg,#202020,#0b0b0b)",
+    border: "1px solid #66501f",
+    borderRadius: 12,
+    padding: 17,
     textAlign: "center",
-    overflowWrap: "anywhere"
+    overflowWrap: "anywhere",
+    boxShadow: "inset 0 0 12px rgba(212,175,55,.05)"
+  },
+
+  statNumber: {
+    color: "#f2d477",
+    fontSize: 27,
+    marginBottom: 8,
+    textShadow: "0 0 10px rgba(212,175,55,.3)"
   },
 
   table: {
@@ -562,7 +733,7 @@ const styles = {
 
   cell: {
     padding: 13,
-    borderBottom: "1px solid #333",
+    borderBottom: "1px solid #59451d",
     verticalAlign: "top"
   },
 
@@ -573,12 +744,27 @@ const styles = {
 
   logout: {
     marginTop: 30,
-    padding: "13px 25px",
-    background: "#d4af37",
-    color: "#000",
-    border: "none",
-    borderRadius: 7,
-    fontWeight: "bold",
-    cursor: "pointer"
+    padding: "14px 28px",
+    background: "linear-gradient(135deg,#fff0a6,#d4af37,#98701e)",
+    color: "#080808",
+    border: "1px solid #ffe69a",
+    borderRadius: 9,
+    fontWeight: "900",
+    letterSpacing: "1px",
+    cursor: "pointer",
+    boxShadow: "0 0 16px rgba(212,175,55,.3)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10
+  },
+
+  footer: {
+    marginTop: 55,
+    padding: 20,
+    borderTop: "1px solid rgba(212,175,55,.25)",
+    textAlign: "center",
+    color: "#d4af37",
+    letterSpacing: "2px",
+    lineHeight: 2
   }
 };
