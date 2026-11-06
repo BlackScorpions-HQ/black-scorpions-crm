@@ -159,220 +159,335 @@ export default function CandidatesPage() {
 
   const inputStyle = {
     width: "100%",
-    padding: 12,
-    marginTop: 7,
-    marginBottom: 15,
-    background: "#222",
-    color: "white",
-    border: "1px solid #444",
-    borderRadius: 7,
-    boxSizing: "border-box"
+    padding: "14px",
+    marginTop: "8px",
+    marginBottom: "17px",
+    background: "#101010",
+    color: "#fff",
+    border: "1px solid #80651f",
+    borderRadius: "9px",
+    boxSizing: "border-box",
+    outline: "none",
+    fontSize: "14px"
+  };
+
+  const labelStyle = {
+    display: "block",
+    color: "#d4af37",
+    fontWeight: "bold",
+    fontSize: "14px"
+  };
+
+  const buttonStyle = {
+    width: "100%",
+    padding: "15px",
+    background: "linear-gradient(110deg,#8c691b,#f5dc85,#b68b25)",
+    color: "#080808",
+    border: "1px solid #f5dc85",
+    borderRadius: "9px",
+    fontWeight: "900",
+    letterSpacing: "1px",
+    cursor: "pointer",
+    boxShadow: "0 0 18px rgba(212,175,55,0.13)"
   };
 
   return (
     <main style={{
       minHeight: "100vh",
-      background: "#080808",
-      color: "white",
-      padding: 20,
-      fontFamily: "Arial"
+      background: `
+        radial-gradient(ellipse at 50% 0%, rgba(110,85,30,0.16), transparent 48%),
+        radial-gradient(ellipse at 0% 45%, rgba(130,130,130,0.08), transparent 40%),
+        radial-gradient(ellipse at 100% 80%, rgba(120,120,120,0.07), transparent 40%),
+        #050505
+      `,
+      color: "#fff",
+      padding: "22px",
+      fontFamily: "Arial, sans-serif"
     }}>
-      <a href="/" style={{ color: "#d4af37" }}>
-        ← Back to Dashboard
-      </a>
-
-      <h1 style={{ color: "#d4af37", marginTop: 25 }}>
-        🦂 Candidates
-      </h1>
-
-      <p style={{ color: "#999" }}>
-        Candidate Management Database
-      </p>
-
-      <p style={{ color: "#d4af37" }}>
-        Your Role: {role || "Loading..."}
-      </p>
-
-      <section style={{
-        background: "#171717",
-        border: "1px solid #d4af37",
-        borderRadius: 12,
-        padding: 20,
-        marginTop: 25
+      <div style={{
+        maxWidth: "950px",
+        margin: "auto"
       }}>
-        <h2 style={{ color: "#d4af37" }}>
-          Add New Candidate
-        </h2>
 
-        <form onSubmit={addCandidate}>
-          <label>Full Name</label>
-          <input
-            style={inputStyle}
-            required
-            value={form.full_name}
-            onChange={e => setForm({
-              ...form, full_name: e.target.value
-            })}
-            placeholder="Candidate full name"
-          />
+        <a href="/" style={{
+          color: "#d4af37",
+          textDecoration: "none",
+          fontWeight: "bold"
+        }}>
+          ← Back to Dashboard
+        </a>
 
-          <label>Phone Number</label>
-          <input
-            style={inputStyle}
-            required
-            value={form.phone}
-            onChange={e => setForm({
-              ...form, phone: e.target.value
-            })}
-            placeholder="Phone number"
-          />
+        <header style={{
+          textAlign: "center",
+          margin: "35px 0"
+        }}>
+          <div style={{
+            fontSize: "45px",
+            color: "#d4af37",
+            textShadow: "0 0 20px rgba(212,175,55,0.4)"
+          }}>
+            ♆
+          </div>
 
-          <label>English Level</label>
-          <select
-            style={inputStyle}
-            value={form.english_level}
-            onChange={e => setForm({
-              ...form, english_level: e.target.value
-            })}
-          >
-            {["A1", "A2", "B1", "B2", "C1", "C2"].map(level =>
-              <option key={level}>{level}</option>
-            )}
-          </select>
+          <h1 style={{
+            color: "#e5c45c",
+            letterSpacing: "3px",
+            fontSize: "clamp(25px,5vw,36px)",
+            textShadow: "0 0 16px rgba(212,175,55,0.2)"
+          }}>
+            BLACK SCORPIONS
+          </h1>
 
-          <label>Location</label>
-          <input
-            style={inputStyle}
-            required
-            value={form.location}
-            onChange={e => setForm({
-              ...form, location: e.target.value
-            })}
-            placeholder="Candidate location"
-          />
+          <p style={{
+            color: "#999",
+            letterSpacing: "2px",
+            marginTop: "9px",
+            fontSize: "12px"
+          }}>
+            CANDIDATE MANAGEMENT DATABASE
+          </p>
 
-          <label>Graduation Status</label>
-          <select
-            style={inputStyle}
-            value={form.graduation_status}
-            onChange={e => setForm({
-              ...form, graduation_status: e.target.value
-            })}
-          >
-            {["Graduate", "Undergraduate", "Gap Year", "Dropout"]
-              .map(value => <option key={value}>{value}</option>)}
-          </select>
+          <div style={{
+            width: "110px",
+            height: "2px",
+            background: "linear-gradient(90deg,transparent,#d4af37,transparent)",
+            margin: "20px auto"
+          }} />
+        </header>
 
-          <label>Work Type</label>
-          <select
-            style={inputStyle}
-            value={form.work_type}
-            onChange={e => setForm({
-              ...form, work_type: e.target.value
-            })}
-          >
-            {["WFS", "WFH", "Both"].map(value =>
-              <option key={value}>{value}</option>
-            )}
-          </select>
+        <section style={{
+          background: "linear-gradient(145deg,#191919,#0c0c0c)",
+          border: "1px solid #80651f",
+          borderRadius: "15px",
+          padding: "18px",
+          marginBottom: "25px",
+          boxShadow: "0 10px 35px rgba(0,0,0,0.5)"
+        }}>
+          <p style={{ color: "#999", fontSize: "13px" }}>
+            CURRENT ACCESS LEVEL
+          </p>
 
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              width: "100%",
-              padding: 14,
-              background: "#d4af37",
-              color: "#000",
-              border: "none",
-              borderRadius: 8,
-              fontWeight: "bold",
-              cursor: "pointer"
-            }}
-          >
-            {saving ? "Saving..." : "ADD CANDIDATE"}
-          </button>
-        </form>
+          <h2 style={{
+            color: "#e5c45c",
+            marginTop: "8px"
+          }}>
+            {role || "Loading..."}
+          </h2>
+        </section>
 
         {message && (
-          <p style={{
-            color: message.includes("Error") ? "#ff6666" : "#d4af37",
+          <div style={{
+            background: "#1b170d",
+            border: "1px solid #a98732",
+            color: "#e5c45c",
+            padding: "14px",
+            borderRadius: "9px",
+            marginBottom: "20px",
             overflowWrap: "anywhere"
           }}>
             {message}
-          </p>
+          </div>
         )}
-      </section>
 
-      <section style={{ marginTop: 30 }}>
-        <h2 style={{ color: "#d4af37" }}>
-          Candidates ({filtered.length})
-        </h2>
+        <section style={{
+          background: "linear-gradient(145deg,#191919,#0c0c0c)",
+          border: "1px solid #80651f",
+          borderRadius: "15px",
+          padding: "22px",
+          marginBottom: "35px",
+          boxShadow: "0 10px 35px rgba(0,0,0,0.4)"
+        }}>
+          <h2 style={{
+            color: "#e5c45c",
+            marginBottom: "22px"
+          }}>
+            🦂 Add New Candidate
+          </h2>
 
-        <input
-          style={inputStyle}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, phone or recruiter..."
-        />
+          <form onSubmit={addCandidate}>
+            <label style={labelStyle}>Full Name</label>
+            <input
+              style={inputStyle}
+              required
+              value={form.full_name}
+              onChange={e => setForm({
+                ...form, full_name: e.target.value
+              })}
+              placeholder="Candidate full name"
+            />
 
-        {loading ? (
-          <p>Loading candidates...</p>
-        ) : filtered.length === 0 ? (
-          <p style={{ color: "#999" }}>No candidates found.</p>
-        ) : (
-          filtered.map(candidate => (
-            <article
-              key={candidate.id}
+            <label style={labelStyle}>Phone Number</label>
+            <input
+              style={inputStyle}
+              required
+              value={form.phone}
+              onChange={e => setForm({
+                ...form, phone: e.target.value
+              })}
+              placeholder="Phone number"
+            />
+
+            <label style={labelStyle}>English Level</label>
+            <select
+              style={inputStyle}
+              value={form.english_level}
+              onChange={e => setForm({
+                ...form, english_level: e.target.value
+              })}
+            >
+              {["A1","A2","B1","B2","C1","C2"].map(level =>
+                <option key={level}>{level}</option>
+              )}
+            </select>
+
+            <label style={labelStyle}>Location</label>
+            <input
+              style={inputStyle}
+              required
+              value={form.location}
+              onChange={e => setForm({
+                ...form, location: e.target.value
+              })}
+              placeholder="Candidate location"
+            />
+
+            <label style={labelStyle}>Graduation Status</label>
+            <select
+              style={inputStyle}
+              value={form.graduation_status}
+              onChange={e => setForm({
+                ...form, graduation_status: e.target.value
+              })}
+            >
+              {["Graduate","Undergraduate","Gap Year","Dropout"].map(value =>
+                <option key={value}>{value}</option>
+              )}
+            </select>
+
+            <label style={labelStyle}>Work Type</label>
+            <select
+              style={inputStyle}
+              value={form.work_type}
+              onChange={e => setForm({
+                ...form, work_type: e.target.value
+              })}
+            >
+              {["WFS","WFH","Both"].map(value =>
+                <option key={value}>{value}</option>
+              )}
+            </select>
+
+            <button
+              type="submit"
+              disabled={saving}
               style={{
-                background: "#171717",
-                border: "1px solid #333",
-                borderRadius: 10,
-                padding: 16,
-                marginBottom: 12
+                ...buttonStyle,
+                opacity: saving ? 0.6 : 1
               }}
             >
-              <h3 style={{ color: "#d4af37" }}>
-                {candidate.full_name}
-              </h3>
+              {saving ? "SAVING..." : "🦂 ADD CANDIDATE"}
+            </button>
+          </form>
+        </section>
 
-              <p>Phone: {candidate.phone}</p>
-              <p>English: {candidate.english_level}</p>
-              <p>Location: {candidate.location}</p>
-              <p>Graduation: {candidate.graduation_status}</p>
-              <p>Work Type: {candidate.work_type}</p>
+        <section>
+          <h2 style={{
+            color: "#e5c45c",
+            marginBottom: "15px"
+          }}>
+            🦂 Candidates ({filtered.length})
+          </h2>
 
-              <p style={{ color: "#d4af37" }}>
-                Added By: {candidate.recruiter_name || "Not recorded"}
-              </p>
+          <input
+            style={inputStyle}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, phone or recruiter..."
+          />
 
-              {role === "CEO" && (
-                <button
-                  type="button"
-                  onClick={() => deleteCandidate(candidate)}
-                  disabled={deletingId === candidate.id}
-                  style={{
-                    background: "#b91c1c",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 7,
-                    padding: "10px 16px",
-                    fontWeight: "bold",
-                    cursor: deletingId === candidate.id
-                      ? "not-allowed"
-                      : "pointer",
-                    opacity: deletingId === candidate.id ? 0.6 : 1
-                  }}
-                >
-                  {deletingId === candidate.id
-                    ? "Deleting..."
-                    : "🗑️ DELETE CANDIDATE"}
-                </button>
-              )}
-            </article>
-          ))
-        )}
-      </section>
+          {loading ? (
+            <p style={{ color: "#d4af37" }}>Loading candidates...</p>
+          ) : filtered.length === 0 ? (
+            <p style={{ color: "#999" }}>No candidates found.</p>
+          ) : (
+            filtered.map(candidate => (
+              <article
+                key={candidate.id}
+                style={{
+                  background: "linear-gradient(145deg,#191919,#0b0b0b)",
+                  border: "1px solid #57451b",
+                  borderRadius: "13px",
+                  padding: "19px",
+                  marginBottom: "15px",
+                  boxShadow: "0 8px 25px rgba(0,0,0,0.35)"
+                }}
+              >
+                <h3 style={{
+                  color: "#e5c45c",
+                  fontSize: "19px",
+                  marginBottom: "13px"
+                }}>
+                  🦂 {candidate.full_name}
+                </h3>
+
+                <div style={{
+                  color: "#ccc",
+                  lineHeight: "1.9",
+                  fontSize: "14px"
+                }}>
+                  <p><b style={{color:"#d4af37"}}>Phone:</b> {candidate.phone}</p>
+                  <p><b style={{color:"#d4af37"}}>English:</b> {candidate.english_level}</p>
+                  <p><b style={{color:"#d4af37"}}>Location:</b> {candidate.location}</p>
+                  <p><b style={{color:"#d4af37"}}>Graduation:</b> {candidate.graduation_status}</p>
+                  <p><b style={{color:"#d4af37"}}>Work Type:</b> {candidate.work_type}</p>
+                </div>
+
+                <p style={{
+                  color: "#d4af37",
+                  marginTop: "12px",
+                  fontSize: "13px"
+                }}>
+                  Added By: {candidate.recruiter_name || "Not recorded"}
+                </p>
+
+                {role === "CEO" && (
+                  <button
+                    type="button"
+                    onClick={() => deleteCandidate(candidate)}
+                    disabled={deletingId === candidate.id}
+                    style={{
+                      marginTop: "16px",
+                      background: "linear-gradient(110deg,#7f2020,#c03939)",
+                      color: "#fff",
+                      border: "1px solid #e05252",
+                      borderRadius: "8px",
+                      padding: "11px 16px",
+                      fontWeight: "bold",
+                      cursor: deletingId === candidate.id ? "not-allowed" : "pointer",
+                      opacity: deletingId === candidate.id ? 0.6 : 1
+                    }}
+                  >
+                    {deletingId === candidate.id
+                      ? "DELETING..."
+                      : "DELETE CANDIDATE"}
+                  </button>
+                )}
+              </article>
+            ))
+          )}
+        </section>
+
+        <footer style={{
+          textAlign: "center",
+          color: "#777",
+          fontSize: "11px",
+          letterSpacing: "2px",
+          marginTop: "45px",
+          padding: "20px"
+        }}>
+          BLACK SCORPIONS © 2026
+        </footer>
+      </div>
     </main>
   );
 }
