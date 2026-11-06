@@ -146,6 +146,22 @@ export default function JobOffersPage() {
     }));
   }
 
+  async function copyOffer(offer) {
+    try {
+      const description = offer.job_description || "";
+
+      if (!description.trim()) {
+        setMessage("This offer has no description to copy.");
+        return;
+      }
+
+      await navigator.clipboard.writeText(description);
+      setMessage("Offer description copied successfully! ✅");
+    } catch (error) {
+      setMessage("Copy failed. Please try again.");
+    }
+  }
+
   async function addJob(event) {
     event.preventDefault();
     setMessage("");
@@ -431,6 +447,18 @@ export default function JobOffersPage() {
         }}>
           {offer.job_description}
         </p>
+
+        <button
+          type="button"
+          onClick={() => copyOffer(offer)}
+          style={{
+            ...buttonStyle,
+            marginTop: "8px",
+            marginBottom: "10px",
+          }}
+        >
+          📋 Copy Offer
+        </button>
 
         {isCEO && (
           <button
