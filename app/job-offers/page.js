@@ -326,32 +326,46 @@ export default function JobOffersPage() {
 
   const inputStyle = {
     width: "100%",
-    padding: "12px",
-    borderRadius: "9px",
-    border: "1px solid #51421c",
-    background: "#111111",
-    color: "#ffffff",
-    marginTop: "6px",
-    marginBottom: "14px",
+    padding: "14px",
+    borderRadius: "8px",
+    border: "1px solid #393939",
+    background: "#111",
+    color: "#fff",
+    marginTop: "8px",
+    marginBottom: "19px",
     boxSizing: "border-box",
+    fontSize: "14px",
   };
 
   const labelStyle = {
-    color: "#d9b64c",
-    fontSize: "14px",
-    fontWeight: "600",
+    color: "#d4af37",
+    fontSize: "11px",
+    fontWeight: "bold",
+    letterSpacing: "1.3px",
     display: "block",
   };
 
   const buttonStyle = {
     width: "100%",
-    padding: "13px",
+    padding: "15px",
     border: "none",
-    borderRadius: "9px",
-    background: "linear-gradient(90deg,#b68b25,#f2d477)",
-    color: "#080808",
-    fontWeight: "800",
+    borderRadius: "8px",
+    background: "linear-gradient(135deg, #f0d477, #b58b24)",
+    color: "#090909",
+    fontWeight: "900",
+    fontSize: "13px",
+    letterSpacing: "1px",
     cursor: "pointer",
+    transition: "0.2s",
+  };
+
+  const sectionStyle = {
+    background: "linear-gradient(145deg, #1c1c1c, #090909)",
+    border: "1px solid rgba(212,175,55,0.55)",
+    borderRadius: "16px",
+    padding: "22px",
+    marginBottom: "28px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.35)",
   };
 
   function field(label, value, onChange, placeholder = "", type = "text") {
@@ -384,7 +398,11 @@ export default function JobOffersPage() {
           </option>
 
           {options.map((option) => (
-            <option key={option} value={option}>
+            <option
+              key={option}
+              value={option}
+              style={{ background: "#111", color: "#fff" }}
+            >
               {option}
             </option>
           ))}
@@ -400,11 +418,12 @@ export default function JobOffersPage() {
       <div
         key={offer.id}
         style={{
-          background: "#111111",
-          border: "1px solid #57451b",
-          borderRadius: "12px",
-          padding: "17px",
-          marginBottom: "13px",
+          background: "linear-gradient(145deg, #191919, #0b0b0b)",
+          border: "1px solid rgba(212,175,55,0.45)",
+          borderRadius: "13px",
+          padding: "20px",
+          marginBottom: "15px",
+          boxShadow: "0 8px 25px rgba(0,0,0,0.3)",
         }}
       >
         <div style={{
@@ -413,48 +432,69 @@ export default function JobOffersPage() {
           alignItems: "center",
           flexWrap: "wrap",
           gap: "10px",
+          borderBottom: "1px solid #333",
+          paddingBottom: "12px",
+          marginBottom: "15px",
         }}>
           <h3 style={{
             color: "#e9c45b",
-            marginTop: 0,
+            margin: 0,
+            fontSize: "19px",
           }}>
             {offer.title}
           </h3>
 
           <span style={{
-            color: isActive ? "#65d69a" : "#ff5555",
+            color: isActive ? "#65d69a" : "#ff7777",
             fontWeight: "bold",
             background: isActive ? "#10251a" : "#2b1111",
+            border: `1px solid ${isActive ? "#28623e" : "#702d2d"}`,
             padding: "7px 12px",
             borderRadius: "20px",
+            fontSize: "11px",
           }}>
-            {isActive ? "🟢 ACTIVE" : "🔴 HOLD"}
+            {isActive ? "ACTIVE" : "ON HOLD"}
           </span>
         </div>
 
-        <p><b>Company:</b> {offer.company_name || "Not specified"}</p>
-        <p><b>Location:</b> {offer.location}</p>
-        <p><b>Language:</b> {offer.required_language}</p>
-        <p><b>Maximum Age:</b> {offer.maximum_age}</p>
-        <p><b>Job Type:</b> {offer.job_type || "Any"}</p>
-        <p><b>Graduation:</b> {offer.graduation_status || "Any"}</p>
-        <p><b>Experience:</b> {offer.experience || "Any"}</p>
-        <p><b>Nationality:</b> {offer.nationality || "Both"}</p>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+          gap: "12px",
+          color: "#ccc",
+          fontSize: "13px",
+        }}>
+          <p><b style={{ color: "#d4af37" }}>Company:</b> {offer.company_name || "Not specified"}</p>
+          <p><b style={{ color: "#d4af37" }}>Location:</b> {offer.location}</p>
+          <p><b style={{ color: "#d4af37" }}>Language:</b> {offer.required_language}</p>
+          <p><b style={{ color: "#d4af37" }}>Maximum Age:</b> {offer.maximum_age}</p>
+          <p><b style={{ color: "#d4af37" }}>Job Type:</b> {offer.job_type || "Any"}</p>
+          <p><b style={{ color: "#d4af37" }}>Graduation:</b> {offer.graduation_status || "Any"}</p>
+          <p><b style={{ color: "#d4af37" }}>Experience:</b> {offer.experience || "Any"}</p>
+          <p><b style={{ color: "#d4af37" }}>Nationality:</b> {offer.nationality || "Both"}</p>
+        </div>
 
-        <p style={{
+        <div style={{
+          background: "#101010",
+          border: "1px solid #292929",
+          borderRadius: "9px",
+          padding: "14px",
+          marginTop: "12px",
+          color: "#ccc",
+          fontSize: "13px",
+          lineHeight: "1.7",
           whiteSpace: "pre-wrap",
-          color: "#cccccc",
+          overflowWrap: "anywhere",
         }}>
           {offer.job_description}
-        </p>
+        </div>
 
         <button
           type="button"
           onClick={() => copyOffer(offer)}
           style={{
             ...buttonStyle,
-            marginTop: "8px",
-            marginBottom: "10px",
+            marginTop: "15px",
           }}
         >
           📋 Copy Offer
@@ -472,8 +512,10 @@ export default function JobOffersPage() {
             }
             style={{
               ...buttonStyle,
-              background: isActive ? "#8d2525" : "#176b3a",
-              color: "#ffffff",
+              background: isActive
+                ? "linear-gradient(135deg, #9d3434, #651d1d)"
+                : "linear-gradient(135deg, #238b4e, #14562e)",
+              color: "#fff",
               marginTop: "10px",
               opacity: changingStatus === offer.id ? 0.6 : 1,
             }}
@@ -481,8 +523,8 @@ export default function JobOffersPage() {
             {changingStatus === offer.id
               ? "Updating..."
               : isActive
-                ? "🔴 Put On Hold"
-                : "🟢 Activate Job"}
+                ? "PUT ON HOLD"
+                : "ACTIVATE JOB"}
           </button>
         )}
       </div>
@@ -492,78 +534,100 @@ export default function JobOffersPage() {
   if (loading) {
     return (
       <main style={{
-        background: "#080808",
+        ...pageStyle,
         color: "#e9c45b",
-        minHeight: "100vh",
-        padding: 30,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}>
-        Loading Job Offers...
+        <div style={loadingStyle}>
+          🦂 LOADING JOB OFFERS...
+        </div>
       </main>
     );
   }
 
   return (
-    <main style={{
-      background: "#080808",
-      color: "#ffffff",
-      minHeight: "100vh",
-      padding: "20px",
-      fontFamily: "Arial, sans-serif",
-    }}>
-      <div style={{
-        maxWidth: "850px",
-        margin: "auto",
-      }}>
-        <h1 style={{ color: "#e9c45b" }}>
-          🦂 Job Offers
-        </h1>
+    <main style={pageStyle}>
+      <div style={smokeOneStyle}></div>
+      <div style={smokeTwoStyle}></div>
 
-        <p style={{ color: "#aaaaaa" }}>
-          BLACK SCORPIONS | Smart Job Matching
-        </p>
+      <div style={{
+        maxWidth: "900px",
+        margin: "auto",
+        position: "relative",
+        zIndex: 1,
+      }}>
+        <header style={{
+          textAlign: "center",
+          marginBottom: "32px",
+          paddingTop: "12px",
+        }}>
+          <div style={logoCircleStyle}>🦂</div>
+
+          <h1 style={{
+            color: "#d4af37",
+            fontSize: "29px",
+            fontWeight: "900",
+            letterSpacing: "2px",
+            margin: "12px 0",
+          }}>
+            JOB OFFERS
+          </h1>
+
+          <div style={goldLineStyle}></div>
+
+          <p style={{
+            color: "#999",
+            fontSize: "11px",
+            letterSpacing: "3px",
+          }}>
+            BLACK SCORPIONS | SMART JOB MATCHING
+          </p>
+        </header>
 
         {message && (
           <div style={{
-            background: "#201b0e",
-            border: "1px solid #b68b25",
+            background: "rgba(212,175,55,0.08)",
+            border: "1px solid rgba(212,175,55,0.5)",
             color: "#f2d477",
-            padding: "12px",
+            padding: "14px",
             borderRadius: "9px",
-            marginBottom: "18px",
+            marginBottom: "20px",
+            fontSize: "13px",
+            lineHeight: "1.5",
           }}>
             {message}
           </div>
         )}
 
         {isCEO && (
-          <section style={{
-            background: "#151515",
-            border: "1px solid #b68b25",
-            borderRadius: "14px",
-            padding: "18px",
-            marginBottom: "28px",
-          }}>
-            <h2 style={{ color: "#e9c45b" }}>
-              + Publish New Job
+          <section style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>
+              + PUBLISH NEW JOB
             </h2>
+
+            <p style={sectionSubtitleStyle}>
+              Create and publish a new job offer
+            </p>
 
             <form onSubmit={addJob}>
               {field(
-                "Job Title *",
+                "JOB TITLE *",
                 job.title,
                 (v) => updateJob("title", v),
                 "Job title"
               )}
 
               {field(
-                "Company Name *",
+                "COMPANY NAME *",
                 job.company_name,
                 (v) => updateJob("company_name", v),
                 "Enter company name"
               )}
 
               {field(
-                "Maximum Age *",
+                "MAXIMUM AGE *",
                 job.maximum_age,
                 (v) => updateJob("maximum_age", v),
                 "18+",
@@ -571,21 +635,21 @@ export default function JobOffersPage() {
               )}
 
               {field(
-                "Language *",
+                "LANGUAGE *",
                 job.required_language,
                 (v) => updateJob("required_language", v),
                 "Example: English B2"
               )}
 
               {field(
-                "Location *",
+                "LOCATION *",
                 job.location,
                 (v) => updateJob("location", v),
                 "Example: Maadi"
               )}
 
               {dropdown(
-                "Job Type",
+                "JOB TYPE",
                 job.job_type,
                 (v) => updateJob("job_type", v),
                 ["WFS", "WFH"],
@@ -593,7 +657,7 @@ export default function JobOffersPage() {
               )}
 
               {dropdown(
-                "Graduation Status",
+                "GRADUATION STATUS",
                 job.graduation_status,
                 (v) => updateJob("graduation_status", v),
                 graduationOptions,
@@ -601,7 +665,7 @@ export default function JobOffersPage() {
               )}
 
               {dropdown(
-                "Experience",
+                "EXPERIENCE",
                 job.experience,
                 (v) => updateJob("experience", v),
                 experienceOptions,
@@ -609,25 +673,26 @@ export default function JobOffersPage() {
               )}
 
               {dropdown(
-                "Nationality",
+                "NATIONALITY",
                 job.nationality,
                 (v) => updateJob("nationality", v),
                 ["Both", "Egyptian", "Foreigner"]
               )}
 
               {dropdown(
-                "Job Status *",
+                "JOB STATUS *",
                 job.status,
                 (v) => updateJob("status", v),
                 ["Active", "Hold"]
               )}
 
               <label style={labelStyle}>
-                Job Description *
+                JOB DESCRIPTION *
                 <textarea
                   style={{
                     ...inputStyle,
-                    minHeight: "110px",
+                    minHeight: "130px",
+                    resize: "vertical",
                   }}
                   value={job.job_description}
                   onChange={(e) =>
@@ -638,33 +703,30 @@ export default function JobOffersPage() {
               </label>
 
               <button
-                style={buttonStyle}
+                style={{
+                  ...buttonStyle,
+                  marginTop: "8px",
+                }}
                 disabled={saving}
               >
-                {saving ? "Publishing..." : "Publish Job Offer"}
+                {saving ? "PUBLISHING..." : "PUBLISH JOB OFFER"}
               </button>
             </form>
           </section>
         )}
 
-        <section style={{
-          background: "#151515",
-          border: "1px solid #b68b25",
-          borderRadius: "14px",
-          padding: "18px",
-          marginBottom: "28px",
-        }}>
-          <h2 style={{ color: "#e9c45b" }}>
-            🔎 Smart Job Matching
+        <section style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>
+            SMART JOB MATCHING
           </h2>
 
-          <p style={{ color: "#aaaaaa" }}>
-            Search for suitable active jobs using candidate details.
+          <p style={sectionSubtitleStyle}>
+            Find suitable active jobs using candidate details
           </p>
 
           <form onSubmit={findMatches}>
             {field(
-              "Candidate Age *",
+              "CANDIDATE AGE *",
               search.age,
               (v) => updateSearch("age", v),
               "Minimum 18",
@@ -672,53 +734,61 @@ export default function JobOffersPage() {
             )}
 
             {dropdown(
-              "Job Type *",
+              "JOB TYPE *",
               search.job_type,
               (v) => updateSearch("job_type", v),
               ["WFS", "WFH"]
             )}
 
             {dropdown(
-              "Graduation Status *",
+              "GRADUATION STATUS *",
               search.graduation_status,
               (v) => updateSearch("graduation_status", v),
-              graduationOptions.filter((option) => option !== "All of Them")
+              graduationOptions.filter(
+                (option) => option !== "All of Them"
+              )
             )}
 
             {field(
-              "Language *",
+              "LANGUAGE *",
               search.required_language,
               (v) => updateSearch("required_language", v),
               "Example: English B2"
             )}
 
             {dropdown(
-              "Experience *",
+              "EXPERIENCE *",
               search.experience,
               (v) => updateSearch("experience", v),
               experienceOptions
             )}
 
             {dropdown(
-              "Nationality *",
+              "NATIONALITY *",
               search.nationality,
               (v) => updateSearch("nationality", v),
               ["Egyptian", "Foreigner"]
             )}
 
             <button style={buttonStyle}>
-              Find Matching Jobs
+              FIND MATCHING JOBS
             </button>
           </form>
 
           {results !== null && (
-            <div style={{ marginTop: "22px" }}>
-              <h3 style={{ color: "#e9c45b" }}>
-                Matching Results: {results.length}
-              </h3>
+            <div style={{ marginTop: "25px" }}>
+              <div style={{
+                borderTop: "1px solid #393020",
+                paddingTop: "18px",
+                marginBottom: "18px",
+              }}>
+                <h3 style={{ color: "#e9c45b" }}>
+                  MATCHING RESULTS: {results.length}
+                </h3>
+              </div>
 
               {results.length === 0 ? (
-                <p style={{ color: "#cccccc" }}>
+                <p style={{ color: "#ccc" }}>
                   No matching jobs found.
                 </p>
               ) : (
@@ -728,21 +798,150 @@ export default function JobOffersPage() {
           )}
         </section>
 
-        <section>
-          <h2 style={{ color: "#e9c45b" }}>
-            {isCEO ? "All Job Offers" : "Active Job Offers"}
-            {" "}({visibleOffers.length})
+        <section style={{ marginBottom: "35px" }}>
+          <h2 style={sectionTitleStyle}>
+            {isCEO ? "ALL JOB OFFERS" : "ACTIVE JOB OFFERS"}
           </h2>
 
+          <p style={sectionSubtitleStyle}>
+            {visibleOffers.length} offers available
+          </p>
+
           {visibleOffers.length === 0 ? (
-            <p style={{ color: "#aaaaaa" }}>
+            <div style={{
+              ...sectionStyle,
+              color: "#aaa",
+              textAlign: "center",
+            }}>
               No job offers found.
-            </p>
+            </div>
           ) : (
             visibleOffers.map(offerCard)
           )}
         </section>
+
+        <footer style={footerStyle}>
+          <p>BLACK SCORPIONS © 2026</p>
+          <span>POWER • DISCIPLINE • SUCCESS</span>
+        </footer>
       </div>
+
+      <style jsx>{`
+        input:focus,
+        select:focus,
+        textarea:focus {
+          outline: none;
+          border-color: #d4af37 !important;
+          box-shadow: 0 0 12px rgba(212,175,55,0.15);
+        }
+
+        button:hover:not(:disabled) {
+          filter: brightness(1.12);
+          transform: translateY(-2px);
+        }
+
+        button:disabled {
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+          main {
+            padding: 16px !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
+
+const pageStyle = {
+  minHeight: "100vh",
+  background:
+    "radial-gradient(ellipse at 50% 35%, #242016 0%, #101010 42%, #050505 100%)",
+  color: "#fff",
+  padding: "25px 18px",
+  fontFamily: "Arial, sans-serif",
+  position: "relative",
+  overflow: "hidden",
+};
+
+const smokeOneStyle = {
+  position: "fixed",
+  width: "600px",
+  height: "600px",
+  borderRadius: "50%",
+  background:
+    "radial-gradient(circle, rgba(212,175,55,0.09), transparent 70%)",
+  top: "-200px",
+  left: "-200px",
+  filter: "blur(50px)",
+  pointerEvents: "none",
+};
+
+const smokeTwoStyle = {
+  position: "fixed",
+  width: "650px",
+  height: "650px",
+  borderRadius: "50%",
+  background:
+    "radial-gradient(circle, rgba(120,120,120,0.12), transparent 70%)",
+  bottom: "-300px",
+  right: "-200px",
+  filter: "blur(60px)",
+  pointerEvents: "none",
+};
+
+const logoCircleStyle = {
+  width: "76px",
+  height: "76px",
+  border: "1px solid #d4af37",
+  borderRadius: "50%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  margin: "0 auto",
+  fontSize: "38px",
+  background: "linear-gradient(145deg, #292316, #090909)",
+  boxShadow: "0 0 25px rgba(212,175,55,0.16)",
+};
+
+const goldLineStyle = {
+  width: "100px",
+  height: "1px",
+  background: "#d4af37",
+  margin: "15px auto",
+};
+
+const sectionTitleStyle = {
+  color: "#d4af37",
+  fontSize: "19px",
+  fontWeight: "900",
+  letterSpacing: "1.3px",
+  margin: "0 0 10px",
+};
+
+const sectionSubtitleStyle = {
+  color: "#999",
+  fontSize: "13px",
+  marginBottom: "22px",
+};
+
+const loadingStyle = {
+  background: "#151515",
+  border: "1px solid #d4af37",
+  borderRadius: "12px",
+  padding: "25px",
+  letterSpacing: "2px",
+  fontWeight: "bold",
+};
+
+const footerStyle = {
+  borderTop: "1px solid #292929",
+  marginTop: "30px",
+  paddingTop: "20px",
+  paddingBottom: "15px",
+  textAlign: "center",
+  color: "#777",
+  fontSize: "10px",
+  letterSpacing: "1.5px",
+};
