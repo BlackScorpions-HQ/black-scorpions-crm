@@ -260,23 +260,16 @@ export default function SuccessfulHires() {
       candidate_id: candidate.id,
       candidate_name: candidate.full_name,
       offer_name: form.offer_name,
-
-      // Keep the existing database company_name requirement.
       company_name: form.offer_name,
-
       job_title: form.job_title.trim() || null,
-
       recruiter_id: recruiter.member_id,
       recruiter_name: recruiter.member_name,
-
       team_leader_id: teamLeader
         ? teamLeader.member_id
         : null,
-
       team_leader_name: teamLeader
         ? teamLeader.member_name
         : null,
-
       recruiter_commission: recruiterCommission,
       team_leader_commission: teamLeaderCommission,
       founder_commission: founderCommission,
@@ -388,28 +381,54 @@ export default function SuccessfulHires() {
 
   const inputStyle = {
     width: "100%",
-    padding: "12px",
-    marginTop: "7px",
-    marginBottom: "15px",
-    background: "#171717",
+    padding: "13px 14px",
+    marginTop: "8px",
+    marginBottom: "17px",
+    background: "rgba(8,8,8,0.9)",
     color: "#fff",
-    border: "1px solid #80621c",
-    borderRadius: "8px",
+    border: "1px solid rgba(212,175,55,0.45)",
+    borderRadius: "9px",
     boxSizing: "border-box",
+    outline: "none",
+    fontSize: "14px",
+    colorScheme: "dark",
   };
 
   const sectionStyle = {
-    background: "#171717",
-    border: "1px solid #80621c",
-    borderRadius: "10px",
-    padding: "15px",
+    background: "linear-gradient(145deg, #191919, #101010)",
+    border: "1px solid rgba(212,175,55,0.35)",
+    borderRadius: "13px",
+    padding: "19px",
     marginTop: "20px",
+    boxShadow: "0 8px 25px rgba(0,0,0,0.25)",
+  };
+
+  const labelStyle = {
+    display: "block",
+    color: "#d4af37",
+    fontSize: "13px",
+    fontWeight: "700",
+    letterSpacing: "0.3px",
+  };
+
+  const cardStyle = {
+    background: "linear-gradient(145deg, rgba(24,24,24,0.97), rgba(12,12,12,0.97))",
+    border: "1px solid rgba(212,175,55,0.35)",
+    borderRadius: "16px",
+    padding: "22px",
+    marginTop: "25px",
+    boxShadow: "0 12px 35px rgba(0,0,0,0.35)",
+    backdropFilter: "blur(12px)",
   };
 
   if (loading) {
     return (
       <main style={styles.page}>
-        <h2>Loading Successful Hires...</h2>
+        <div style={styles.loadingCard}>
+          <div style={styles.goldLine}></div>
+          <h2 style={styles.heading}>Loading Successful Hires...</h2>
+          <p style={{ color: "#999" }}>Black Scorpions HQ</p>
+        </div>
       </main>
     );
   }
@@ -417,269 +436,322 @@ export default function SuccessfulHires() {
   if (!isCEO) {
     return (
       <main style={styles.page}>
-        <h2>CEO Access Only</h2>
+        <div style={styles.loadingCard}>
+          <h2 style={styles.title}>CEO Access Only</h2>
+          <p style={{ color: "#999" }}>
+            This page is restricted to the CEO.
+          </p>
+        </div>
       </main>
     );
   }
 
   return (
     <main style={styles.page}>
-      <h1 style={styles.title}>🦂 Successful Hires</h1>
+      <div style={styles.glowOne}></div>
+      <div style={styles.glowTwo}></div>
 
-      <p style={{ color: "#aaa" }}>
-        Manage successful placements and commission distribution.
-      </p>
-
-      {message && <p style={styles.success}>{message}</p>}
-      {error && <p style={styles.error}>{error}</p>}
-
-      <section style={styles.card}>
-        <h2 style={styles.heading}>Add Successful Hire</h2>
-
-        <form onSubmit={addSuccessfulHire}>
-          <label>Candidate</label>
-          <select
-            required
-            style={inputStyle}
-            value={form.candidate_id}
-            onChange={(e) =>
-              updateForm("candidate_id", e.target.value)
-            }
-          >
-            <option value="">Select Candidate</option>
-
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.full_name}
-              </option>
-            ))}
-          </select>
-
-          <label>Offer Name</label>
-          <select
-            required
-            style={inputStyle}
-            value={form.offer_name}
-            onChange={(e) => selectOffer(e.target.value)}
-          >
-            <option value="">Select Offer</option>
-
-            {offers.map((offer) => (
-              <option key={offer.id} value={offer.offer_name}>
-                {offer.offer_name}
-              </option>
-            ))}
-          </select>
-
-          {offers.length === 0 && (
-            <p style={{ color: "#ffb84d", marginTop: "-8px" }}>
-              No offers found. Add offers first in Commission Structure.
-            </p>
-          )}
-
-          <label>Job Title</label>
-          <input
-            style={inputStyle}
-            value={form.job_title}
-            onChange={(e) =>
-              updateForm("job_title", e.target.value)
-            }
-            placeholder="Job title"
-          />
-
-          <label>Hiring Date</label>
-          <input
-            required
-            type="date"
-            style={inputStyle}
-            value={form.hiring_date}
-            onChange={(e) =>
-              updateForm("hiring_date", e.target.value)
-            }
-          />
-
-          <div style={sectionStyle}>
-            <h3 style={styles.heading}>👤 Recruiter</h3>
-
-            <label>Recruiter Name</label>
-            <select
-              required
-              style={inputStyle}
-              value={form.recruiter_id}
-              onChange={(e) => {
-                const selected = recruiters.find(
-                  (item) => item.member_id === e.target.value
-                );
-
-                setForm((previous) => ({
-                  ...previous,
-                  recruiter_id: e.target.value,
-                  recruiter_name: selected
-                    ? selected.member_name
-                    : "",
-                }));
-              }}
-            >
-              <option value="">Select Recruiter</option>
-
-              {recruiters.map((recruiter) => (
-                <option
-                  key={recruiter.member_id}
-                  value={recruiter.member_id}
-                >
-                  {recruiter.member_name}
-                </option>
-              ))}
-            </select>
-
-            <label>Recruiter Commission (EGP)</label>
-            <input
-              required
-              type="number"
-              min="0"
-              style={inputStyle}
-              value={form.recruiter_commission}
-              onChange={(e) =>
-                updateForm("recruiter_commission", e.target.value)
-              }
-            />
+      <div style={styles.content}>
+        <header style={styles.header}>
+          <div style={styles.brandLine}>
+            <span style={styles.brandMark}>🦂</span>
+            <span style={styles.brandName}>BLACK SCORPIONS</span>
           </div>
 
-          <div style={sectionStyle}>
-            <h3 style={styles.heading}>👔 Team Leader</h3>
+          <h1 style={styles.title}>Successful Hires</h1>
 
-            <label>Team Leader Name</label>
-            <select
-              style={inputStyle}
-              value={form.team_leader_id}
-              onChange={(e) => {
-                const selected = teamLeaders.find(
-                  (item) => item.member_id === e.target.value
-                );
-
-                setForm((previous) => ({
-                  ...previous,
-                  team_leader_id: e.target.value,
-                  team_leader_name: selected
-                    ? selected.member_name
-                    : "",
-                }));
-              }}
-            >
-              <option value="">No Team Leader</option>
-
-              {teamLeaders.map((leader) => (
-                <option
-                  key={leader.member_id}
-                  value={leader.member_id}
-                >
-                  {leader.member_name}
-                </option>
-              ))}
-            </select>
-
-            <label>Team Leader Commission (EGP)</label>
-            <input
-              required
-              type="number"
-              min="0"
-              style={inputStyle}
-              value={form.team_leader_commission}
-              onChange={(e) =>
-                updateForm("team_leader_commission", e.target.value)
-              }
-            />
-          </div>
-
-          <div style={sectionStyle}>
-            <h3 style={styles.heading}>👑 CEO / Founder</h3>
-
-            <label>Founder Name</label>
-            <input
-              required
-              style={inputStyle}
-              value={form.founder_name}
-              onChange={(e) =>
-                updateForm("founder_name", e.target.value)
-              }
-              placeholder="Write Founder name"
-            />
-
-            <label>Founder Commission (EGP)</label>
-            <input
-              required
-              type="number"
-              min="0"
-              style={inputStyle}
-              value={form.founder_commission}
-              onChange={(e) =>
-                updateForm("founder_commission", e.target.value)
-              }
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            style={styles.button}
-          >
-            {saving ? "Saving..." : "Publish Successful Hire"}
-          </button>
-        </form>
-      </section>
-
-      <section style={styles.card}>
-        <h2 style={styles.heading}>
-          Successful Hires ({hires.length})
-        </h2>
-
-        {hires.length === 0 ? (
-          <p style={{ color: "#aaa" }}>
-            No successful hires yet.
+          <p style={styles.subtitle}>
+            Manage successful placements and commission distribution.
           </p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th>Candidate</th>
-                  <th>Offer Name</th>
-                  <th>Recruiter</th>
-                  <th>Team Leader</th>
-                  <th>Founder Commission</th>
-                  <th>Date</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
 
-              <tbody>
-                {hires.map((hire) => (
-                  <tr key={hire.id}>
-                    <td>{hire.candidate_name}</td>
-                    <td>{hire.offer_name || hire.company_name || "—"}</td>
-                    <td>{hire.recruiter_name}</td>
-                    <td>{hire.team_leader_name || "—"}</td>
-                    <td>{hire.founder_commission} EGP</td>
-                    <td>{hire.hiring_date}</td>
-                    <td>
-                      <button
-                        type="button"
-                        disabled={deletingId === hire.id}
-                        onClick={() => deleteHire(hire)}
-                        style={styles.deleteButton}
-                      >
-                        {deletingId === hire.id
-                          ? "Deleting..."
-                          : "🗑️ Delete"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={styles.goldLine}></div>
+        </header>
+
+        {message && (
+          <div style={styles.success}>
+            <span>✓</span> {message}
           </div>
         )}
-      </section>
+
+        {error && (
+          <div style={styles.error}>
+            <span>!</span> {error}
+          </div>
+        )}
+
+        <section style={cardStyle}>
+          <div style={styles.sectionHeader}>
+            <div>
+              <span style={styles.eyebrow}>PLACEMENT MANAGEMENT</span>
+              <h2 style={styles.heading}>Add Successful Hire</h2>
+            </div>
+            <span style={styles.headerIcon}>✦</span>
+          </div>
+
+          <form onSubmit={addSuccessfulHire}>
+            <label style={labelStyle}>Candidate</label>
+            <select
+              required
+              style={inputStyle}
+              value={form.candidate_id}
+              onChange={(e) =>
+                updateForm("candidate_id", e.target.value)
+              }
+            >
+              <option value="">Select Candidate</option>
+              {candidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.full_name}
+                </option>
+              ))}
+            </select>
+
+            <label style={labelStyle}>Offer Name</label>
+            <select
+              required
+              style={inputStyle}
+              value={form.offer_name}
+              onChange={(e) => selectOffer(e.target.value)}
+            >
+              <option value="">Select Offer</option>
+              {offers.map((offer) => (
+                <option key={offer.id} value={offer.offer_name}>
+                  {offer.offer_name}
+                </option>
+              ))}
+            </select>
+
+            {offers.length === 0 && (
+              <p style={styles.warning}>
+                No offers found. Add offers first in Commission Structure.
+              </p>
+            )}
+
+            <label style={labelStyle}>Job Title</label>
+            <input
+              style={inputStyle}
+              value={form.job_title}
+              onChange={(e) =>
+                updateForm("job_title", e.target.value)
+              }
+              placeholder="Enter job title"
+            />
+
+            <label style={labelStyle}>Hiring Date</label>
+            <input
+              required
+              type="date"
+              style={inputStyle}
+              value={form.hiring_date}
+              onChange={(e) =>
+                updateForm("hiring_date", e.target.value)
+              }
+            />
+
+            <div style={sectionStyle}>
+              <h3 style={styles.subHeading}>👤 Recruiter</h3>
+
+              <label style={labelStyle}>Recruiter Name</label>
+              <select
+                required
+                style={inputStyle}
+                value={form.recruiter_id}
+                onChange={(e) => {
+                  const selected = recruiters.find(
+                    (item) => item.member_id === e.target.value
+                  );
+
+                  setForm((previous) => ({
+                    ...previous,
+                    recruiter_id: e.target.value,
+                    recruiter_name: selected
+                      ? selected.member_name
+                      : "",
+                  }));
+                }}
+              >
+                <option value="">Select Recruiter</option>
+                {recruiters.map((recruiter) => (
+                  <option
+                    key={recruiter.member_id}
+                    value={recruiter.member_id}
+                  >
+                    {recruiter.member_name}
+                  </option>
+                ))}
+              </select>
+
+              <label style={labelStyle}>Recruiter Commission (EGP)</label>
+              <input
+                required
+                type="number"
+                min="0"
+                style={inputStyle}
+                value={form.recruiter_commission}
+                onChange={(e) =>
+                  updateForm("recruiter_commission", e.target.value)
+                }
+              />
+            </div>
+
+            <div style={sectionStyle}>
+              <h3 style={styles.subHeading}>👔 Team Leader</h3>
+
+              <label style={labelStyle}>Team Leader Name</label>
+              <select
+                style={inputStyle}
+                value={form.team_leader_id}
+                onChange={(e) => {
+                  const selected = teamLeaders.find(
+                    (item) => item.member_id === e.target.value
+                  );
+
+                  setForm((previous) => ({
+                    ...previous,
+                    team_leader_id: e.target.value,
+                    team_leader_name: selected
+                      ? selected.member_name
+                      : "",
+                  }));
+                }}
+              >
+                <option value="">No Team Leader</option>
+                {teamLeaders.map((leader) => (
+                  <option
+                    key={leader.member_id}
+                    value={leader.member_id}
+                  >
+                    {leader.member_name}
+                  </option>
+                ))}
+              </select>
+
+              <label style={labelStyle}>Team Leader Commission (EGP)</label>
+              <input
+                required
+                type="number"
+                min="0"
+                style={inputStyle}
+                value={form.team_leader_commission}
+                onChange={(e) =>
+                  updateForm("team_leader_commission", e.target.value)
+                }
+              />
+            </div>
+
+            <div style={sectionStyle}>
+              <h3 style={styles.subHeading}>👑 CEO / Founder</h3>
+
+              <label style={labelStyle}>Founder Name</label>
+              <input
+                required
+                style={inputStyle}
+                value={form.founder_name}
+                onChange={(e) =>
+                  updateForm("founder_name", e.target.value)
+                }
+                placeholder="Write Founder name"
+              />
+
+              <label style={labelStyle}>Founder Commission (EGP)</label>
+              <input
+                required
+                type="number"
+                min="0"
+                style={inputStyle}
+                value={form.founder_commission}
+                onChange={(e) =>
+                  updateForm("founder_commission", e.target.value)
+                }
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                ...styles.button,
+                opacity: saving ? 0.6 : 1,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Saving..." : "✦ Publish Successful Hire"}
+            </button>
+          </form>
+        </section>
+
+        <section style={cardStyle}>
+          <div style={styles.sectionHeader}>
+            <div>
+              <span style={styles.eyebrow}>PLACEMENT RECORDS</span>
+              <h2 style={styles.heading}>
+                Successful Hires
+              </h2>
+            </div>
+
+            <div style={styles.countBadge}>{hires.length}</div>
+          </div>
+
+          {hires.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={{ fontSize: "35px" }}>🦂</div>
+              <p>No successful hires yet.</p>
+            </div>
+          ) : (
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Offer Name</th>
+                    <th>Recruiter</th>
+                    <th>Team Leader</th>
+                    <th>Founder Commission</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {hires.map((hire) => (
+                    <tr key={hire.id}>
+                      <td style={styles.nameCell}>
+                        {hire.candidate_name}
+                      </td>
+                      <td>{hire.offer_name || hire.company_name || "—"}</td>
+                      <td>{hire.recruiter_name}</td>
+                      <td>{hire.team_leader_name || "—"}</td>
+                      <td style={styles.moneyCell}>
+                        {hire.founder_commission} EGP
+                      </td>
+                      <td>{hire.hiring_date}</td>
+                      <td>
+                        <button
+                          type="button"
+                          disabled={deletingId === hire.id}
+                          onClick={() => deleteHire(hire)}
+                          style={{
+                            ...styles.deleteButton,
+                            opacity: deletingId === hire.id ? 0.6 : 1,
+                          }}
+                        >
+                          {deletingId === hire.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <footer style={styles.footer}>
+          <span>🦂</span> BLACK SCORPIONS RECRUITMENT AGENCY
+        </footer>
+      </div>
     </main>
   );
 }
@@ -687,70 +759,243 @@ export default function SuccessfulHires() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#080808",
+    position: "relative",
+    overflow: "hidden",
+    background: "radial-gradient(ellipse at 50% 0%, #29200d 0%, #111 38%, #050505 100%)",
     color: "#fff",
-    padding: "25px",
+    padding: "28px 18px",
     fontFamily: "Arial, sans-serif",
+    boxSizing: "border-box",
+  },
+
+  content: {
+    position: "relative",
+    zIndex: 2,
+    maxWidth: "1150px",
+    margin: "0 auto",
+  },
+
+  glowOne: {
+    position: "absolute",
+    top: "-150px",
+    right: "-100px",
+    width: "400px",
+    height: "400px",
+    borderRadius: "50%",
+    background: "rgba(212,175,55,0.09)",
+    filter: "blur(100px)",
+    pointerEvents: "none",
+  },
+
+  glowTwo: {
+    position: "absolute",
+    top: "650px",
+    left: "-150px",
+    width: "350px",
+    height: "350px",
+    borderRadius: "50%",
+    background: "rgba(130,130,130,0.07)",
+    filter: "blur(100px)",
+    pointerEvents: "none",
+  },
+
+  header: {
+    marginBottom: "28px",
+    padding: "15px 5px",
+  },
+
+  brandLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "18px",
+  },
+
+  brandMark: {
+    fontSize: "27px",
+  },
+
+  brandName: {
+    color: "#d4af37",
+    fontSize: "12px",
+    fontWeight: "bold",
+    letterSpacing: "3px",
   },
 
   title: {
-    color: "#d4af37",
-    fontSize: "30px",
-    marginBottom: "5px",
+    color: "#e5c45b",
+    fontSize: "clamp(29px, 5vw, 43px)",
+    margin: "0 0 10px",
+    fontWeight: "800",
+    letterSpacing: "0.5px",
+    textShadow: "0 0 25px rgba(212,175,55,0.18)",
   },
 
-  card: {
-    background: "#111",
-    border: "1px solid #80621c",
-    borderRadius: "12px",
-    padding: "20px",
-    marginTop: "25px",
+  subtitle: {
+    color: "#aaa",
+    fontSize: "14px",
+    lineHeight: 1.6,
+  },
+
+  goldLine: {
+    width: "75px",
+    height: "3px",
+    borderRadius: "5px",
+    background: "linear-gradient(90deg, #80621c, #f4d778)",
+    marginTop: "20px",
+  },
+
+  sectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+  },
+
+  eyebrow: {
+    display: "block",
+    color: "#9c8135",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontWeight: "bold",
+    marginBottom: "7px",
   },
 
   heading: {
+    color: "#e2c15b",
+    fontSize: "21px",
+    margin: 0,
+    fontWeight: "700",
+  },
+
+  subHeading: {
+    color: "#e2c15b",
+    fontSize: "17px",
+    margin: "0 0 18px",
+  },
+
+  headerIcon: {
     color: "#d4af37",
-    marginBottom: "15px",
+    fontSize: "27px",
+  },
+
+  countBadge: {
+    minWidth: "42px",
+    height: "42px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(212,175,55,0.12)",
+    border: "1px solid rgba(212,175,55,0.4)",
+    borderRadius: "10px",
+    color: "#e5c45b",
+    fontWeight: "bold",
   },
 
   button: {
     width: "100%",
-    padding: "14px",
+    padding: "15px",
     marginTop: "20px",
-    background: "#d4af37",
-    color: "#080808",
-    fontWeight: "bold",
-    border: "none",
-    borderRadius: "8px",
+    background: "linear-gradient(135deg, #b38b25, #f0d778, #b38b25)",
+    color: "#100d05",
+    fontWeight: "800",
+    border: "1px solid #f4dc88",
+    borderRadius: "9px",
     cursor: "pointer",
+    fontSize: "14px",
+    letterSpacing: "0.5px",
+    boxShadow: "0 5px 20px rgba(212,175,55,0.15)",
   },
 
   deleteButton: {
     padding: "9px 13px",
-    background: "#7f1d1d",
-    color: "#fff",
+    background: "rgba(127,29,29,0.25)",
+    color: "#ff8585",
     fontWeight: "bold",
-    border: "1px solid #ef4444",
+    border: "1px solid rgba(239,68,68,0.5)",
     borderRadius: "7px",
     cursor: "pointer",
+    whiteSpace: "nowrap",
   },
 
   success: {
-    color: "#4ade80",
-    padding: "12px",
-    background: "#102516",
-    borderRadius: "8px",
+    color: "#75e6a0",
+    padding: "14px 16px",
+    background: "rgba(16,70,35,0.35)",
+    border: "1px solid rgba(74,222,128,0.35)",
+    borderRadius: "10px",
+    marginBottom: "15px",
+    fontSize: "14px",
   },
 
   error: {
-    color: "#ff6464",
-    padding: "12px",
-    background: "#2b1111",
-    borderRadius: "8px",
+    color: "#ff8585",
+    padding: "14px 16px",
+    background: "rgba(100,20,20,0.3)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    borderRadius: "10px",
+    marginBottom: "15px",
+    fontSize: "14px",
+  },
+
+  warning: {
+    color: "#e7bd58",
+    fontSize: "12px",
+    marginTop: "-8px",
+    marginBottom: "17px",
+  },
+
+  tableWrapper: {
+    width: "100%",
+    overflowX: "auto",
+    borderRadius: "9px",
   },
 
   table: {
     width: "100%",
+    minWidth: "850px",
     borderCollapse: "collapse",
     textAlign: "left",
+    fontSize: "13px",
+  },
+
+  nameCell: {
+    color: "#e5c45b",
+    fontWeight: "bold",
+  },
+
+  moneyCell: {
+    color: "#e5c45b",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  emptyState: {
+    textAlign: "center",
+    padding: "35px 10px",
+    color: "#999",
+    border: "1px dashed rgba(212,175,55,0.25)",
+    borderRadius: "10px",
+  },
+
+  loadingCard: {
+    maxWidth: "450px",
+    margin: "100px auto",
+    textAlign: "center",
+    padding: "30px",
+    background: "#141414",
+    border: "1px solid rgba(212,175,55,0.35)",
+    borderRadius: "15px",
+  },
+
+  footer: {
+    textAlign: "center",
+    color: "#76652f",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    marginTop: "45px",
+    padding: "20px 5px",
+    borderTop: "1px solid rgba(212,175,55,0.15)",
   },
 };
