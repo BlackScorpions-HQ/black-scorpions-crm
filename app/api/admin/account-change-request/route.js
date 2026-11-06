@@ -151,6 +151,20 @@ export async function POST(request) {
       );
     }
 
+    // Only name and phone requests are supported
+    if (
+      !["full_name", "phone"].includes(
+        changeRequest.request_type
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error: "This request type is no longer supported.",
+        },
+        { status: 400 }
+      );
+    }
+
     if (changeRequest.status !== "Pending") {
       return NextResponse.json(
         {
@@ -184,7 +198,9 @@ export async function POST(request) {
         return NextResponse.json(
           {
             error: "Unable to deny this request",
-            details: denyError?.message || "Request may already be processed.",
+            details:
+              denyError?.message ||
+              "Request may already be processed.",
             code: denyError?.code,
           },
           { status: 409 }
@@ -244,74 +260,53 @@ export async function POST(request) {
 
     const targetUser = accountData.user;
 
-    // Approve name or phone change
+    // Approve name or phone change only
+    const newValue = changeRequest.requested_value;
+
     if (
-      changeRequest.request_type === "full_name" ||
-      changeRequest.request_type === "phone"
+      typeof newValue !== "string" ||
+      !newValue.trim()
     ) {
-      const newValue = changeRequest.requested_value;
-
-      if (
-        typeof newValue !== "string" ||
-        !newValue.trim()
-      ) {
-        throw new Error("The requested value is empty or invalid.");
-      }
-
-      const metadata = {
-        ...(targetUser.user_metadata || {}),
-      };
-
-      if (changeRequest.request_type === "full_name") {
-        metadata.full_name = newValue.trim();
-      }
-
-      if (changeRequest.request_type === "phone") {
-        metadata.phone = newValue.trim();
-      }
-
-      const { error: updateUserError } =
-        await admin.auth.admin.updateUserById(
-          changeRequest.user_id,
-          { user_metadata: metadata }
-        );
-
-      if (updateUserError) {
-        throw updateUserError;
-      }
+      throw new Error(
+        "The requested value is empty or invalid."
+      );
     }
 
-    // Password reset email
-    else if (changeRequest.request_type === "password") {
-      const email = targetUser.email;
+    const metadata = {
+      ...(targetUser.user_metadata || {}),
+    };
 
-      if (!email) {
-        throw new Error("User email address was not found.");
-      }
+    if (changeRequest.request_type === "full_name") {
+      metadata.full_name = newValue.trim();
+    } else if (changeRequest.request_type === "phone") {
+      metadata.phone = newValue.trim();
+    }
 
-      const { error: resetError } =
-        await authClient.auth.resetPasswordForEmail(email);
+    const { error: updateUserError } =
+      await admin.auth.admin.updateUserById(
+        changeRequest.user_id,
+        { user_metadata: metadata }
+      );
 
-      if (resetError) {
-        throw resetError;
-      }
-    } else {
-      throw new Error("Unsupported change request type.");
+    if (updateUserError) {
+      throw updateUserError;
     }
 
     // Mark request as approved
-    const { data: approvedRequest, error: approveError } =
-      await admin
-        .from("account_change_requests")
-        .update({
-          status: "Approved",
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", requestId)
-        .eq("status", "Processing")
-        .select("id")
-        .maybeSingle();
+    const {
+      data: approvedRequest,
+      error: approveError,
+    } = await admin
+      .from("account_change_requests")
+      .update({
+        status: "Approved",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", requestId)
+      .eq("status", "Processing")
+      .select("id")
+      .maybeSingle();
 
     if (approveError || !approvedRequest) {
       throw approveError || new Error(
@@ -321,10 +316,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message:
-        changeRequest.request_type === "password"
-          ? "Request approved. Password reset email sent."
-          : "Account change approved successfully.",
+      message: "Account change approved successfully.",
     });
 
   } catch (error) {
