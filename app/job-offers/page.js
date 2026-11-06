@@ -43,35 +43,74 @@ const emptyJob = {
   status: "Active",
 };
 
-function getLanguageLevel(language) {
-  const value = (language || "").trim().toLowerCase();
-  const match = value.match(/^(.*?)\s+(a1|a2|b1|b2|c1|c2)$/i);
+// Normalize language names and levels.
+// Supports: French C1, French (C1), French - C1, English B2+.
+function getLanguageLevel(value) {
+  const normalized = (value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 
-  if (!match) return null;
+  if (!normalized) return null;
 
-  const levels = ["A1", "A2", "B1", "B2", "C1", "C2"];
+  const match = normalized.match(
+    /^(.*?)\s*(?:\(\s*|\s+|[-–—:]\s*)(a1|a2|b1|b2|c1|c2)(\+)?\s*\)?$/i
+  );
+
+  const levels = {
+    A1: 1,
+    A2: 2,
+    B1: 3,
+    B2: 4,
+    C1: 5,
+    C2: 6,
+  };
+
+  if (!match) {
+    return {
+      language: normalized,
+      level: null,
+    };
+  }
+
+  const language = match[1]
+    .trim()
+    .replace(/\s+/g, " ");
+
+  const levelName = match[2].toUpperCase();
+  const plus = match[3] === "+";
 
   return {
-    language: match[1].trim(),
-    level: levels.indexOf(match[2].toUpperCase()),
+    language,
+    level: levels[levelName] + (plus ? 0.5 : 0),
   };
 }
 
+// Candidate language must meet or exceed the offer requirement.
 function languageMatches(candidateLanguage, requiredLanguage) {
   const candidate = getLanguageLevel(candidateLanguage);
   const required = getLanguageLevel(requiredLanguage);
 
-  if (candidate && required) {
-    return (
-      candidate.language === required.language &&
-      candidate.level >= required.level
-    );
+  if (!candidate || !required) return false;
+
+  // Different languages never match.
+  if (candidate.language !== required.language) {
+    return false;
   }
 
-  return (
-    (candidateLanguage || "").trim().toLowerCase() ===
-    (requiredLanguage || "").trim().toLowerCase()
-  );
+  // If the offer has no specified level, any level of that language matches.
+  if (required.level === null) {
+    return true;
+  }
+
+  // If the candidate has no level, they cannot meet a specific requirement.
+  if (candidate.level === null) {
+    return false;
+  }
+
+  return candidate.level >= required.level;
 }
 
 export default function JobOffersPage() {
@@ -288,7 +327,9 @@ export default function JobOffersPage() {
           search.required_language,
           offer.required_language
         )
-      ) return false;
+      ) {
+        return false;
+      }
 
       if (offer.job_type && offer.job_type !== search.job_type) {
         return false;
@@ -298,19 +339,25 @@ export default function JobOffersPage() {
         offer.graduation_status &&
         offer.graduation_status !== "All of Them" &&
         offer.graduation_status !== search.graduation_status
-      ) return false;
+      ) {
+        return false;
+      }
 
       if (
         offer.experience &&
         experienceRank[search.experience] <
-        experienceRank[offer.experience]
-      ) return false;
+          experienceRank[offer.experience]
+      ) {
+        return false;
+      }
 
       if (
         offer.nationality &&
         offer.nationality !== "Both" &&
         offer.nationality !== search.nationality
-      ) return false;
+      ) {
+        return false;
+      }
 
       return true;
     });
@@ -426,44 +473,52 @@ export default function JobOffersPage() {
           boxShadow: "0 8px 25px rgba(0,0,0,0.3)",
         }}
       >
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "10px",
-          borderBottom: "1px solid #333",
-          paddingBottom: "12px",
-          marginBottom: "15px",
-        }}>
-          <h3 style={{
-            color: "#e9c45b",
-            margin: 0,
-            fontSize: "19px",
-          }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "10px",
+            borderBottom: "1px solid #333",
+            paddingBottom: "12px",
+            marginBottom: "15px",
+          }}
+        >
+          <h3
+            style={{
+              color: "#e9c45b",
+              margin: 0,
+              fontSize: "19px",
+            }}
+          >
             {offer.title}
           </h3>
 
-          <span style={{
-            color: isActive ? "#65d69a" : "#ff7777",
-            fontWeight: "bold",
-            background: isActive ? "#10251a" : "#2b1111",
-            border: `1px solid ${isActive ? "#28623e" : "#702d2d"}`,
-            padding: "7px 12px",
-            borderRadius: "20px",
-            fontSize: "11px",
-          }}>
+          <span
+            style={{
+              color: isActive ? "#65d69a" : "#ff7777",
+              fontWeight: "bold",
+              background: isActive ? "#10251a" : "#2b1111",
+              border: `1px solid ${isActive ? "#28623e" : "#702d2d"}`,
+              padding: "7px 12px",
+              borderRadius: "20px",
+              fontSize: "11px",
+            }}
+          >
             {isActive ? "ACTIVE" : "ON HOLD"}
           </span>
         </div>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-          gap: "12px",
-          color: "#ccc",
-          fontSize: "13px",
-        }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+            gap: "12px",
+            color: "#ccc",
+            fontSize: "13px",
+          }}
+        >
           <p><b style={{ color: "#d4af37" }}>Company:</b> {offer.company_name || "Not specified"}</p>
           <p><b style={{ color: "#d4af37" }}>Location:</b> {offer.location}</p>
           <p><b style={{ color: "#d4af37" }}>Language:</b> {offer.required_language}</p>
@@ -474,18 +529,20 @@ export default function JobOffersPage() {
           <p><b style={{ color: "#d4af37" }}>Nationality:</b> {offer.nationality || "Both"}</p>
         </div>
 
-        <div style={{
-          background: "#101010",
-          border: "1px solid #292929",
-          borderRadius: "9px",
-          padding: "14px",
-          marginTop: "12px",
-          color: "#ccc",
-          fontSize: "13px",
-          lineHeight: "1.7",
-          whiteSpace: "pre-wrap",
-          overflowWrap: "anywhere",
-        }}>
+        <div
+          style={{
+            background: "#101010",
+            border: "1px solid #292929",
+            borderRadius: "9px",
+            padding: "14px",
+            marginTop: "12px",
+            color: "#ccc",
+            fontSize: "13px",
+            lineHeight: "1.7",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+          }}
+        >
           {offer.job_description}
         </div>
 
@@ -533,13 +590,15 @@ export default function JobOffersPage() {
 
   if (loading) {
     return (
-      <main style={{
-        ...pageStyle,
-        color: "#e9c45b",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
+      <main
+        style={{
+          ...pageStyle,
+          color: "#e9c45b",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <div style={loadingStyle}>
           🦂 LOADING JOB OFFERS...
         </div>
@@ -552,51 +611,61 @@ export default function JobOffersPage() {
       <div style={smokeOneStyle}></div>
       <div style={smokeTwoStyle}></div>
 
-      <div style={{
-        maxWidth: "900px",
-        margin: "auto",
-        position: "relative",
-        zIndex: 1,
-      }}>
-        <header style={{
-          textAlign: "center",
-          marginBottom: "32px",
-          paddingTop: "12px",
-        }}>
+      <div
+        style={{
+          maxWidth: "900px",
+          margin: "auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <header
+          style={{
+            textAlign: "center",
+            marginBottom: "32px",
+            paddingTop: "12px",
+          }}
+        >
           <div style={logoCircleStyle}>🦂</div>
 
-          <h1 style={{
-            color: "#d4af37",
-            fontSize: "29px",
-            fontWeight: "900",
-            letterSpacing: "2px",
-            margin: "12px 0",
-          }}>
+          <h1
+            style={{
+              color: "#d4af37",
+              fontSize: "29px",
+              fontWeight: "900",
+              letterSpacing: "2px",
+              margin: "12px 0",
+            }}
+          >
             JOB OFFERS
           </h1>
 
           <div style={goldLineStyle}></div>
 
-          <p style={{
-            color: "#999",
-            fontSize: "11px",
-            letterSpacing: "3px",
-          }}>
+          <p
+            style={{
+              color: "#999",
+              fontSize: "11px",
+              letterSpacing: "3px",
+            }}
+          >
             BLACK SCORPIONS | SMART JOB MATCHING
           </p>
         </header>
 
         {message && (
-          <div style={{
-            background: "rgba(212,175,55,0.08)",
-            border: "1px solid rgba(212,175,55,0.5)",
-            color: "#f2d477",
-            padding: "14px",
-            borderRadius: "9px",
-            marginBottom: "20px",
-            fontSize: "13px",
-            lineHeight: "1.5",
-          }}>
+          <div
+            style={{
+              background: "rgba(212,175,55,0.08)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              color: "#f2d477",
+              padding: "14px",
+              borderRadius: "9px",
+              marginBottom: "20px",
+              fontSize: "13px",
+              lineHeight: "1.5",
+            }}
+          >
             {message}
           </div>
         )}
@@ -753,7 +822,7 @@ export default function JobOffersPage() {
               "LANGUAGE *",
               search.required_language,
               (v) => updateSearch("required_language", v),
-              "Example: English B2"
+              "Example: French C1, Dutch B2, English B2+"
             )}
 
             {dropdown(
@@ -777,11 +846,13 @@ export default function JobOffersPage() {
 
           {results !== null && (
             <div style={{ marginTop: "25px" }}>
-              <div style={{
-                borderTop: "1px solid #393020",
-                paddingTop: "18px",
-                marginBottom: "18px",
-              }}>
+              <div
+                style={{
+                  borderTop: "1px solid #393020",
+                  paddingTop: "18px",
+                  marginBottom: "18px",
+                }}
+              >
                 <h3 style={{ color: "#e9c45b" }}>
                   MATCHING RESULTS: {results.length}
                 </h3>
@@ -808,11 +879,13 @@ export default function JobOffersPage() {
           </p>
 
           {visibleOffers.length === 0 ? (
-            <div style={{
-              ...sectionStyle,
-              color: "#aaa",
-              textAlign: "center",
-            }}>
+            <div
+              style={{
+                ...sectionStyle,
+                color: "#aaa",
+                textAlign: "center",
+              }}
+            >
               No job offers found.
             </div>
           ) : (
