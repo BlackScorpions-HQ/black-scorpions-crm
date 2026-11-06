@@ -138,7 +138,7 @@ export default function Home() {
         supabase
           .from("successful_hires")
           .select(
-            "id, recruiter_id, recruiter_name, team_leader_id, team_leader_name, recruiter_commission, team_leader_commission, founder_commission, hiring_date"
+            "id, company_name, offer_name, recruiter_id, recruiter_name, team_leader_id, team_leader_name, recruiter_commission, team_leader_commission, founder_commission, hiring_date"
           ),
 
         supabase
@@ -422,6 +422,65 @@ export default function Home() {
         b.hire_count - a.hire_count ||
         b.commission_total - a.commission_total
     );
+
+  // Company Performance Analytics - CEO
+  const companyPerformance = Object.values(
+    hires.reduce((groups, hire) => {
+      const companyName = (
+        hire.company_name ||
+        hire.offer_name ||
+        "Unknown Company"
+      ).trim();
+
+      if (!groups[companyName]) {
+        groups[companyName] = {
+          company_name: companyName,
+          hire_count: 0,
+          recruiter_commissions: 0,
+          team_leader_commissions: 0,
+          founder_commissions: 0,
+          total_commissions: 0,
+        };
+      }
+
+      const recruiterCommission = Number(
+        hire.recruiter_commission || 0
+      );
+
+      const teamLeaderCommission = Number(
+        hire.team_leader_commission || 0
+      );
+
+      const founderCommission = Number(
+        hire.founder_commission || 0
+      );
+
+      groups[companyName].hire_count += 1;
+      groups[companyName].recruiter_commissions += recruiterCommission;
+      groups[companyName].team_leader_commissions += teamLeaderCommission;
+      groups[companyName].founder_commissions += founderCommission;
+
+      groups[companyName].total_commissions +=
+        recruiterCommission +
+        teamLeaderCommission +
+        founderCommission;
+
+      return groups;
+    }, {})
+  ).sort(
+    (a, b) =>
+      b.hire_count - a.hire_count ||
+      b.total_commissions - a.total_commissions
+  );
+
+  const totalCompanies = companyPerformance.length;
+
+  const totalCompanyCommissions = companyPerformance.reduce(
+    (total, company) => total + company.total_commissions,
+    0
+  );
+
+  const topCompany = companyPerformance[0] || null;
 
   return (
     <main style={styles.page}>
@@ -815,6 +874,137 @@ export default function Home() {
 
                               <td style={styles.cell}>
                                 {leader.commission_total.toLocaleString()} EGP
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* COMPANY PERFORMANCE ANALYTICS - CEO ONLY */}
+              {isCEO && (
+                <section style={styles.teamSection}>
+                  <h2 style={styles.sectionTitle}>
+                    <ScorpionMark size={29} />
+                    Company Performance Analytics
+                  </h2>
+
+                  <p style={styles.muted}>
+                    Company rankings based on successful placements
+                    and total commission distribution.
+                  </p>
+
+                  <div style={styles.stats}>
+                    <div style={styles.statCard}>
+                      <h2 style={styles.statNumber}>
+                        {totalCompanies}
+                      </h2>
+                      <p style={styles.muted}>Total Companies</p>
+                    </div>
+
+                    <div style={styles.statCard}>
+                      <h2 style={styles.statNumber}>
+                        {hires.length}
+                      </h2>
+                      <p style={styles.muted}>Total Placements</p>
+                    </div>
+
+                    <div style={styles.statCard}>
+                      <h2 style={styles.statNumber}>
+                        {totalCompanyCommissions.toLocaleString()} EGP
+                      </h2>
+                      <p style={styles.muted}>Total Commissions</p>
+                    </div>
+                  </div>
+
+                  {topCompany && (
+                    <div style={{
+                      ...styles.statCard,
+                      marginBottom: 20,
+                      border: "1px solid #d4af37",
+                      background: "linear-gradient(135deg,#30250d,#111)"
+                    }}>
+                      <p style={{
+                        color: "#aaa",
+                        fontSize: 12,
+                        letterSpacing: 2
+                      }}>
+                        🏆 TOP PERFORMING COMPANY
+                      </p>
+
+                      <h2 style={{
+                        color: "#f2d477",
+                        margin: "10px 0",
+                        fontSize: 24
+                      }}>
+                        {topCompany.company_name}
+                      </h2>
+
+                      <p style={styles.muted}>
+                        {topCompany.hire_count} Successful Hires
+                      </p>
+                    </div>
+                  )}
+
+                  {companyPerformance.length === 0 ? (
+                    <p style={styles.muted}>
+                      No company performance data available yet.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.cell}>Rank</th>
+                            <th style={styles.cell}>Company</th>
+                            <th style={styles.cell}>Successful Hires</th>
+                            <th style={styles.cell}>Recruiter Commissions</th>
+                            <th style={styles.cell}>TL Commissions</th>
+                            <th style={styles.cell}>Founder Commissions</th>
+                            <th style={styles.cell}>Total Commissions</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {companyPerformance.map((company, index) => (
+                            <tr key={company.company_name}>
+                              <td style={styles.cell}>
+                                <span style={styles.rankBadge}>
+                                  #{index + 1}
+                                </span>
+                              </td>
+
+                              <td style={styles.cell}>
+                                <strong style={{ color: "#f2d477" }}>
+                                  {company.company_name}
+                                </strong>
+                              </td>
+
+                              <td style={styles.cell}>
+                                <strong style={{ color: "#f2d477" }}>
+                                  {company.hire_count}
+                                </strong>
+                              </td>
+
+                              <td style={styles.cell}>
+                                {company.recruiter_commissions.toLocaleString()} EGP
+                              </td>
+
+                              <td style={styles.cell}>
+                                {company.team_leader_commissions.toLocaleString()} EGP
+                              </td>
+
+                              <td style={styles.cell}>
+                                {company.founder_commissions.toLocaleString()} EGP
+                              </td>
+
+                              <td style={styles.cell}>
+                                <strong style={{ color: "#65d69a" }}>
+                                  {company.total_commissions.toLocaleString()} EGP
+                                </strong>
                               </td>
                             </tr>
                           ))}
