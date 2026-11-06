@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,6 +9,9 @@ export default function SuccessfulHires() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState("");
   const [isCEO, setIsCEO] = useState(false);
 
   const [hires, setHires] = useState([]);
@@ -42,108 +44,170 @@ export default function SuccessfulHires() {
     loadPage();
   }, [supabase]);
 
+  const currentUserName = (authUser) =>
+    authUser?.user_metadata?.full_name ||
+    authUser?.user_metadata?.name ||
+    authUser?.email ||
+    "Unknown User";
+
   async function loadPage() {
     setLoading(true);
     setError("");
 
-    const { data: authData, error: authError } =
-      await supabase.auth.getUser();
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
 
-    if (authError || !authData?.user) {
-      setError("Please login first.");
-      setLoading(false);
-      return;
-    }
+      if (authError || !authData?.user) {
+        setError("Please login first.");
+        setLoading(false);
+        return;
+      }
 
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("id", authData.user.id)
-      .single();
+      const currentUser = authData.user;
+      setUser(currentUser);
 
-    if (roleError || roleData?.role !== "CEO") {
-      setIsCEO(false);
-      setLoading(false);
-      return;
-    }
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("id", currentUser.id)
+        .single();
 
-    setIsCEO(true);
+      if (roleError || !roleData?.role) {
+        setError("Could not identify your account role.");
+        setLoading(false);
+        return;
+      }
 
-    const founderDefault =
-      authData.user.user_metadata?.full_name ||
-      authData.user.user_metadata?.name ||
-      authData.user.email ||
-      "";
+      const currentRole = roleData.role;
 
-    setForm((previous) => ({
-      ...previous,
-      founder_name: previous.founder_name || founderDefault,
-    }));
+      if (
+        !["CEO", "Team Leader", "Recruiter"].includes(currentRole)
+      ) {
+        setError("You do not have permission to access this page.");
+        setLoading(false);
+        return;
+      }
 
-    const [
-      hireResult,
-      candidateResult,
-      teamResult,
-      offerResult,
-    ] = await Promise.all([
-      supabase
-        .from("successful_hires")
-        .select("*")
-        .order("created_at", { ascending: false }),
+      setRole(currentRole);
+      setIsCEO(currentRole === "CEO");
 
-      supabase
-        .from("candidates")
-        .select("id, full_name")
-        .order("created_at", { ascending: false }),
+      const currentName = currentUserName(currentUser);
 
-      supabase.rpc("get_my_team"),
+      // Find the CEO account for Founder commission attribution.
+      let founderId = currentUser.id;
+      let founderName = currentName;
 
-      supabase
-        .from("commission_entries")
-        .select("*")
-        .order("offer_name", { ascending: true }),
-    ]);
+      if (currentRole !== "CEO") {
+        const { data: founderData } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("role", "CEO")
+          .limit(1)
+          .maybeSingle();
 
-    if (hireResult.error) {
-      setError(hireResult.error.message);
-    } else {
-      setHires(hireResult.data || []);
-    }
+        if (founderData?.id) {
+          founderId = founderData.id;
+          founderName = "CEO / Founder";
+        }
+      }
 
-    if (candidateResult.error) {
-      setError(candidateResult.error.message);
-    } else {
-      setCandidates(candidateResult.data || []);
-    }
+      setForm((previous) => ({
+        ...previous,
+        founder_name: previous.founder_name || founderName,
+        recruiter_id:
+          currentRole === "Recruiter"
+            ? currentUser.id
+            : previous.recruiter_id,
+        recruiter_name:
+          currentRole === "Recruiter"
+            ? currentName
+            : previous.recruiter_name,
+        team_leader_id:
+          currentRole === "Team Leader"
+            ? currentUser.id
+            : previous.team_leader_id,
+        team_leader_name:
+          currentRole === "Team Leader"
+            ? currentName
+            : previous.team_leader_name,
+      }));
 
-    if (teamResult.error) {
-      setError(
-        "Could not load recruiter and Team Leader accounts: " +
-          teamResult.error.message
-      );
-    } else {
-      const accounts = teamResult.data || [];
+      const [
+        hireResult,
+        candidateResult,
+        teamResult,
+        offerResult,
+      ] = await Promise.all([
+        // Supabase RLS must restrict which hires each role can read.
+        supabase
+          .from("successful_hires")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      setRecruiters(
-        accounts.filter(
-          (account) => account.member_role === "Recruiter"
-        )
-      );
+        // Candidate visibility is also controlled by Supabase RLS.
+        supabase
+          .from("candidates")
+          .select("id, full_name")
+          .order("created_at", { ascending: false }),
 
-      setTeamLeaders(
-        accounts.filter(
-          (account) => account.member_role === "Team Leader"
-        )
-      );
-    }
+        supabase.rpc("get_my_team"),
 
-    if (offerResult.error) {
-      setError(
-        "Could not load commission offers: " +
-          offerResult.error.message
-      );
-    } else {
-      setOffers(offerResult.data || []);
+        supabase
+          .from("commission_entries")
+          .select("*")
+          .order("offer_name", { ascending: true }),
+      ]);
+
+      if (hireResult.error) {
+        setError("Could not load successful hires: " + hireResult.error.message);
+      } else {
+        setHires(hireResult.data || []);
+      }
+
+      if (candidateResult.error) {
+        setError("Could not load candidates: " + candidateResult.error.message);
+      } else {
+        setCandidates(candidateResult.data || []);
+      }
+
+      if (teamResult.error) {
+        setError(
+          "Could not load team accounts: " + teamResult.error.message
+        );
+      } else {
+        const accounts = teamResult.data || [];
+
+        setRecruiters(
+          accounts.filter(
+            (account) => account.member_role === "Recruiter"
+          )
+        );
+
+        setTeamLeaders(
+          accounts.filter(
+            (account) => account.member_role === "Team Leader"
+          )
+        );
+      }
+
+      if (offerResult.error) {
+        setError(
+          "Could not load commission offers: " + offerResult.error.message
+        );
+      } else {
+        setOffers(offerResult.data || []);
+      }
+
+      // Keep the CEO's identity as the Founder for non-CEO accounts.
+      if (currentRole !== "CEO" && founderId) {
+        setForm((previous) => ({
+          ...previous,
+          founder_name: previous.founder_name || founderName,
+        }));
+      }
+    } catch (err) {
+      setError(err.message || "Something went wrong while loading the page.");
     }
 
     setLoading(false);
@@ -187,22 +251,8 @@ export default function SuccessfulHires() {
       (item) => item.id === form.candidate_id
     );
 
-    const recruiter = recruiters.find(
-      (item) => item.member_id === form.recruiter_id
-    );
-
-    const teamLeader = teamLeaders.find(
-      (item) => item.member_id === form.team_leader_id
-    );
-
     if (!candidate) {
       setError("Please select a candidate.");
-      setSaving(false);
-      return;
-    }
-
-    if (!recruiter) {
-      setError("Please select a Recruiter account.");
       setSaving(false);
       return;
     }
@@ -214,7 +264,7 @@ export default function SuccessfulHires() {
     }
 
     if (!form.founder_name.trim()) {
-      setError("Please complete the Founder name.");
+      setError("Founder name is missing.");
       setSaving(false);
       return;
     }
@@ -230,17 +280,7 @@ export default function SuccessfulHires() {
         founderCommission,
       ].some((value) => !Number.isFinite(value) || value < 0)
     ) {
-      setError(
-        "Commission amounts must be valid non-negative numbers."
-      );
-      setSaving(false);
-      return;
-    }
-
-    if (teamLeaderCommission > 0 && !teamLeader) {
-      setError(
-        "Please select a Team Leader for their commission."
-      );
+      setError("Commission amounts must be valid non-negative numbers.");
       setSaving(false);
       return;
     }
@@ -254,7 +294,104 @@ export default function SuccessfulHires() {
       return;
     }
 
-    const founderId = authData.user.id;
+    const currentUser = authData.user;
+    const currentName = currentUserName(currentUser);
+
+    let recruiter = null;
+    let teamLeader = null;
+
+    // Recruiter: automatically assign the logged-in account.
+    if (role === "Recruiter") {
+      recruiter = {
+        member_id: currentUser.id,
+        member_name: currentName,
+      };
+
+      // If the team RPC provides the Recruiter's Team Leader,
+      // use that account for the hire.
+      const matchingLeader = teamLeaders.find(
+        (leader) =>
+          leader.member_name &&
+          leader.member_name ===
+            (recruiters.find(
+              (item) => item.member_id === currentUser.id
+            )?.team_leader_name || "")
+      );
+
+      teamLeader = matchingLeader || null;
+    }
+
+    // Team Leader: the Recruiter must belong to their team.
+    if (role === "Team Leader") {
+      recruiter = recruiters.find(
+        (item) => item.member_id === form.recruiter_id
+      );
+
+      teamLeader = {
+        member_id: currentUser.id,
+        member_name: currentName,
+      };
+
+      if (!recruiter) {
+        setError("Please select a Recruiter from your team.");
+        setSaving(false);
+        return;
+      }
+    }
+
+    // CEO: can assign any Recruiter and Team Leader.
+    if (role === "CEO") {
+      recruiter = recruiters.find(
+        (item) => item.member_id === form.recruiter_id
+      );
+
+      teamLeader = teamLeaders.find(
+        (item) => item.member_id === form.team_leader_id
+      ) || null;
+
+      if (!recruiter) {
+        setError("Please select a Recruiter account.");
+        setSaving(false);
+        return;
+      }
+    }
+
+    if (!recruiter) {
+      setError("Could not identify the Recruiter account.");
+      setSaving(false);
+      return;
+    }
+
+    if (teamLeaderCommission > 0 && !teamLeader) {
+      setError(
+        "A Team Leader is required when the Team Leader commission is greater than zero."
+      );
+      setSaving(false);
+      return;
+    }
+
+    let founderId = currentUser.id;
+    let founderName = form.founder_name.trim();
+
+    if (role !== "CEO") {
+      const { data: founderData, error: founderError } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("role", "CEO")
+        .limit(1)
+        .maybeSingle();
+
+      if (founderError || !founderData?.id) {
+        setError(
+          "Could not identify the CEO account for Founder commission."
+        );
+        setSaving(false);
+        return;
+      }
+
+      founderId = founderData.id;
+      founderName = "CEO / Founder";
+    }
 
     const hirePayload = {
       candidate_id: candidate.id,
@@ -264,12 +401,8 @@ export default function SuccessfulHires() {
       job_title: form.job_title.trim() || null,
       recruiter_id: recruiter.member_id,
       recruiter_name: recruiter.member_name,
-      team_leader_id: teamLeader
-        ? teamLeader.member_id
-        : null,
-      team_leader_name: teamLeader
-        ? teamLeader.member_name
-        : null,
+      team_leader_id: teamLeader ? teamLeader.member_id : null,
+      team_leader_name: teamLeader ? teamLeader.member_name : null,
       recruiter_commission: recruiterCommission,
       team_leader_commission: teamLeaderCommission,
       founder_commission: founderCommission,
@@ -283,7 +416,7 @@ export default function SuccessfulHires() {
       .single();
 
     if (hireError) {
-      setError(hireError.message);
+      setError("Could not save Successful Hire: " + hireError.message);
       setSaving(false);
       return;
     }
@@ -297,25 +430,27 @@ export default function SuccessfulHires() {
         amount: recruiterCommission,
         status: "Pending",
       },
-      {
+    ];
+
+    if (teamLeader) {
+      commissionRows.push({
         successful_hire_id: hire.id,
-        user_id: teamLeader ? teamLeader.member_id : null,
-        user_name: teamLeader
-          ? teamLeader.member_name
-          : "No Team Leader",
+        user_id: teamLeader.member_id,
+        user_name: teamLeader.member_name,
         user_role: "Team Leader",
         amount: teamLeaderCommission,
         status: "Pending",
-      },
-      {
-        successful_hire_id: hire.id,
-        user_id: founderId,
-        user_name: form.founder_name.trim(),
-        user_role: "CEO",
-        amount: founderCommission,
-        status: "Pending",
-      },
-    ];
+      });
+    }
+
+    commissionRows.push({
+      successful_hire_id: hire.id,
+      user_id: founderId,
+      user_name: founderName,
+      user_role: "CEO",
+      amount: founderCommission,
+      status: "Pending",
+    });
 
     const { error: commissionError } = await supabase
       .from("commissions")
@@ -326,27 +461,41 @@ export default function SuccessfulHires() {
         "Hire saved, but commissions could not be created: " +
           commissionError.message
       );
-
       await loadPage();
       setSaving(false);
       return;
     }
 
-    setMessage(
-      "Successful Hire and all commissions added! 🔥"
-    );
+    setMessage("Successful Hire and all commissions added! 🔥");
 
-    setForm({
+    setForm((previous) => ({
       ...initialForm,
       hiring_date: new Date().toISOString().split("T")[0],
-      founder_name: form.founder_name,
-    });
+      founder_name: previous.founder_name,
+      ...(role === "Recruiter"
+        ? {
+            recruiter_id: currentUser.id,
+            recruiter_name: currentName,
+          }
+        : {}),
+      ...(role === "Team Leader"
+        ? {
+            team_leader_id: currentUser.id,
+            team_leader_name: currentName,
+          }
+        : {}),
+    }));
 
     await loadPage();
     setSaving(false);
   }
 
   async function deleteHire(hire) {
+    if (!isCEO) {
+      setError("Only the CEO can delete successful hires.");
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete the successful hire for ${hire.candidate_name} at ${hire.offer_name || hire.company_name}?\n\nAll commissions linked to this hire will also be deleted.`
     );
@@ -433,18 +582,20 @@ export default function SuccessfulHires() {
     );
   }
 
-  if (!isCEO) {
+  if (!role) {
     return (
       <main style={styles.page}>
         <div style={styles.loadingCard}>
-          <h2 style={styles.title}>CEO Access Only</h2>
+          <h2 style={styles.title}>Access Error</h2>
           <p style={{ color: "#999" }}>
-            This page is restricted to the CEO.
+            {error || "Your account role could not be verified."}
           </p>
         </div>
       </main>
     );
   }
+
+  const canChooseRecruiter = role === "CEO" || role === "Team Leader";
 
   return (
     <main style={styles.page}>
@@ -551,35 +702,47 @@ export default function SuccessfulHires() {
             <div style={sectionStyle}>
               <h3 style={styles.subHeading}>👤 Recruiter</h3>
 
-              <label style={labelStyle}>Recruiter Name</label>
-              <select
-                required
-                style={inputStyle}
-                value={form.recruiter_id}
-                onChange={(e) => {
-                  const selected = recruiters.find(
-                    (item) => item.member_id === e.target.value
-                  );
+              {canChooseRecruiter ? (
+                <>
+                  <label style={labelStyle}>Recruiter Name</label>
+                  <select
+                    required
+                    style={inputStyle}
+                    value={form.recruiter_id}
+                    onChange={(e) => {
+                      const selected = recruiters.find(
+                        (item) => item.member_id === e.target.value
+                      );
 
-                  setForm((previous) => ({
-                    ...previous,
-                    recruiter_id: e.target.value,
-                    recruiter_name: selected
-                      ? selected.member_name
-                      : "",
-                  }));
-                }}
-              >
-                <option value="">Select Recruiter</option>
-                {recruiters.map((recruiter) => (
-                  <option
-                    key={recruiter.member_id}
-                    value={recruiter.member_id}
+                      setForm((previous) => ({
+                        ...previous,
+                        recruiter_id: e.target.value,
+                        recruiter_name: selected
+                          ? selected.member_name
+                          : "",
+                      }));
+                    }}
                   >
-                    {recruiter.member_name}
-                  </option>
-                ))}
-              </select>
+                    <option value="">Select Recruiter</option>
+                    {recruiters.map((recruiter) => (
+                      <option
+                        key={recruiter.member_id}
+                        value={recruiter.member_id}
+                      >
+                        {recruiter.member_name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <label style={labelStyle}>Recruiter Name</label>
+                  <div style={styles.lockedValue}>
+                    {currentUserName(user)}
+                    <span>ASSIGNED AUTOMATICALLY</span>
+                  </div>
+                </>
+              )}
 
               <label style={labelStyle}>Recruiter Commission (EGP)</label>
               <input
@@ -597,34 +760,58 @@ export default function SuccessfulHires() {
             <div style={sectionStyle}>
               <h3 style={styles.subHeading}>👔 Team Leader</h3>
 
-              <label style={labelStyle}>Team Leader Name</label>
-              <select
-                style={inputStyle}
-                value={form.team_leader_id}
-                onChange={(e) => {
-                  const selected = teamLeaders.find(
-                    (item) => item.member_id === e.target.value
-                  );
+              {role === "CEO" ? (
+                <>
+                  <label style={labelStyle}>Team Leader Name</label>
+                  <select
+                    style={inputStyle}
+                    value={form.team_leader_id}
+                    onChange={(e) => {
+                      const selected = teamLeaders.find(
+                        (item) => item.member_id === e.target.value
+                      );
 
-                  setForm((previous) => ({
-                    ...previous,
-                    team_leader_id: e.target.value,
-                    team_leader_name: selected
-                      ? selected.member_name
-                      : "",
-                  }));
-                }}
-              >
-                <option value="">No Team Leader</option>
-                {teamLeaders.map((leader) => (
-                  <option
-                    key={leader.member_id}
-                    value={leader.member_id}
+                      setForm((previous) => ({
+                        ...previous,
+                        team_leader_id: e.target.value,
+                        team_leader_name: selected
+                          ? selected.member_name
+                          : "",
+                      }));
+                    }}
                   >
-                    {leader.member_name}
-                  </option>
-                ))}
-              </select>
+                    <option value="">No Team Leader</option>
+                    {teamLeaders.map((leader) => (
+                      <option
+                        key={leader.member_id}
+                        value={leader.member_id}
+                      >
+                        {leader.member_name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : role === "Team Leader" ? (
+                <>
+                  <label style={labelStyle}>Team Leader Name</label>
+                  <div style={styles.lockedValue}>
+                    {currentUserName(user)}
+                    <span>ASSIGNED AUTOMATICALLY</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label style={labelStyle}>Team Leader</label>
+                  <div style={styles.lockedValue}>
+                    {form.team_leader_name || "Not assigned"}
+                    <span>
+                      {form.team_leader_name
+                        ? "TEAM LEADER"
+                        : "NO TEAM LEADER LINK FOUND"}
+                    </span>
+                  </div>
+                </>
+              )}
 
               <label style={labelStyle}>Team Leader Commission (EGP)</label>
               <input
@@ -650,7 +837,8 @@ export default function SuccessfulHires() {
                 onChange={(e) =>
                   updateForm("founder_name", e.target.value)
                 }
-                placeholder="Write Founder name"
+                placeholder="Founder name"
+                disabled={!isCEO}
               />
 
               <label style={labelStyle}>Founder Commission (EGP)</label>
@@ -684,9 +872,7 @@ export default function SuccessfulHires() {
           <div style={styles.sectionHeader}>
             <div>
               <span style={styles.eyebrow}>PLACEMENT RECORDS</span>
-              <h2 style={styles.heading}>
-                Successful Hires
-              </h2>
+              <h2 style={styles.heading}>Successful Hires</h2>
             </div>
 
             <div style={styles.countBadge}>{hires.length}</div>
@@ -708,7 +894,7 @@ export default function SuccessfulHires() {
                     <th>Team Leader</th>
                     <th>Founder Commission</th>
                     <th>Date</th>
-                    <th>Action</th>
+                    {isCEO && <th>Action</th>}
                   </tr>
                 </thead>
 
@@ -725,21 +911,24 @@ export default function SuccessfulHires() {
                         {hire.founder_commission} EGP
                       </td>
                       <td>{hire.hiring_date}</td>
-                      <td>
-                        <button
-                          type="button"
-                          disabled={deletingId === hire.id}
-                          onClick={() => deleteHire(hire)}
-                          style={{
-                            ...styles.deleteButton,
-                            opacity: deletingId === hire.id ? 0.6 : 1,
-                          }}
-                        >
-                          {deletingId === hire.id
-                            ? "Deleting..."
-                            : "Delete"}
-                        </button>
-                      </td>
+
+                      {isCEO && (
+                        <td>
+                          <button
+                            type="button"
+                            disabled={deletingId === hire.id}
+                            onClick={() => deleteHire(hire)}
+                            style={{
+                              ...styles.deleteButton,
+                              opacity: deletingId === hire.id ? 0.6 : 1,
+                            }}
+                          >
+                            {deletingId === hire.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -753,6 +942,15 @@ export default function SuccessfulHires() {
         </footer>
       </div>
     </main>
+  );
+}
+
+function currentUserName(user) {
+  return (
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email ||
+    "Unknown User"
   );
 }
 
@@ -917,6 +1115,22 @@ const styles = {
     borderRadius: "7px",
     cursor: "pointer",
     whiteSpace: "nowrap",
+  },
+
+  lockedValue: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px",
+    padding: "13px 14px",
+    marginTop: "8px",
+    marginBottom: "17px",
+    background: "rgba(8,8,8,0.9)",
+    color: "#f2d477",
+    border: "1px solid rgba(212,175,55,0.45)",
+    borderRadius: "9px",
+    boxSizing: "border-box",
+    fontSize: "14px",
   },
 
   success: {
