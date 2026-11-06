@@ -68,6 +68,7 @@ export default function SettingsPage() {
         "id, request_type, old_value, requested_value, status, created_at, reviewed_at"
       )
       .eq("user_id", userId)
+      .in("request_type", ["full_name", "phone"])
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -75,13 +76,18 @@ export default function SettingsPage() {
     setRequests(data || []);
   }
 
-  async function sendRequest(type, requestedValue = null) {
+  async function sendRequest(type, requestedValue) {
     setMessage("");
     setError("");
 
     if (!user) return;
 
-    if (type !== "password" && !requestedValue?.trim()) {
+    if (!["full_name", "phone"].includes(type)) {
+      setError("Unsupported request type.");
+      return;
+    }
+
+    if (!requestedValue?.trim()) {
       setError("Please enter the requested value.");
       return;
     }
@@ -121,8 +127,7 @@ export default function SettingsPage() {
           user_email: user.email,
           request_type: type,
           old_value: oldValue,
-          requested_value:
-            type === "password" ? null : requestedValue.trim(),
+          requested_value: requestedValue.trim(),
           status: "Pending",
         });
 
@@ -156,7 +161,6 @@ export default function SettingsPage() {
   function requestLabel(type) {
     if (type === "full_name") return "Name Change";
     if (type === "phone") return "Phone Number Change";
-    if (type === "password") return "Password Change";
     return type;
   }
 
@@ -209,9 +213,7 @@ export default function SettingsPage() {
 
         <div style={styles.infoRow}>
           <span style={styles.infoLabel}>ACCOUNT ID</span>
-          <span style={styles.smallValue}>
-            {user?.id}
-          </span>
+          <span style={styles.smallValue}>{user?.id}</span>
         </div>
       </section>
 
@@ -264,38 +266,6 @@ export default function SettingsPage() {
         </button>
       </section>
 
-      {/* SECURITY */}
-      <section style={styles.card}>
-        <h2 style={styles.sectionTitle}>SECURITY</h2>
-
-        <p style={styles.description}>
-          You can request a password reset. The CEO must approve
-          the request before a secure reset email is sent.
-        </p>
-
-        <div style={styles.securityBox}>
-          <div style={{ fontSize: 30 }}>🔐</div>
-          <div>
-            <strong style={styles.infoValue}>
-              Password Reset
-            </strong>
-            <p style={styles.muted}>
-              No password is stored in the request database.
-            </p>
-          </div>
-        </div>
-
-        <button
-          style={styles.button}
-          disabled={!!saving}
-          onClick={() => sendRequest("password")}
-        >
-          {saving === "password"
-            ? "SENDING..."
-            : "REQUEST PASSWORD CHANGE"}
-        </button>
-      </section>
-
       {/* REQUEST HISTORY */}
       <section style={styles.card}>
         <h2 style={styles.sectionTitle}>MY CHANGE REQUESTS</h2>
@@ -318,25 +288,17 @@ export default function SettingsPage() {
                   </span>
                 </div>
 
-                {item.request_type !== "password" && (
-                  <div style={styles.changeDetails}>
-                    <p>
-                      <span style={styles.muted}>Previous:</span>{" "}
-                      {item.old_value || "Not provided"}
-                    </p>
-
-                    <p>
-                      <span style={styles.muted}>Requested:</span>{" "}
-                      {item.requested_value || "Not provided"}
-                    </p>
-                  </div>
-                )}
-
-                {item.request_type === "password" && (
-                  <p style={styles.muted}>
-                    Password reset request. No password is stored.
+                <div style={styles.changeDetails}>
+                  <p>
+                    <span style={styles.muted}>Previous:</span>{" "}
+                    {item.old_value || "Not provided"}
                   </p>
-                )}
+
+                  <p>
+                    <span style={styles.muted}>Requested:</span>{" "}
+                    {item.requested_value || "Not provided"}
+                  </p>
+                </div>
 
                 <p style={styles.date}>
                   Submitted:{" "}
@@ -547,17 +509,6 @@ const styles = {
     height: 1,
     background: "#49391b",
     margin: "25px 0",
-  },
-
-  securityBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: 15,
-    padding: 15,
-    background: "#111",
-    border: "1px solid #49391b",
-    borderRadius: 9,
-    marginBottom: 17,
   },
 
   requestList: {
