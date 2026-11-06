@@ -16,27 +16,28 @@ export default function SuccessfulHires() {
   const [candidates, setCandidates] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
   const [teamLeaders, setTeamLeaders] = useState([]);
+  const [offers, setOffers] = useState([]);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [form, setForm] = useState({
+  const initialForm = {
     candidate_id: "",
+    offer_name: "",
     company_name: "",
     job_title: "",
     hiring_date: new Date().toISOString().split("T")[0],
-
     recruiter_id: "",
     recruiter_name: "",
     recruiter_commission: "0",
-
     team_leader_id: "",
     team_leader_name: "",
     team_leader_commission: "0",
-
     founder_name: "",
     founder_commission: "0",
-  });
+  };
+
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
     loadPage();
@@ -80,20 +81,29 @@ export default function SuccessfulHires() {
       founder_name: previous.founder_name || founderDefault,
     }));
 
-    const [hireResult, candidateResult, teamResult] =
-      await Promise.all([
-        supabase
-          .from("successful_hires")
-          .select("*")
-          .order("created_at", { ascending: false }),
+    const [
+      hireResult,
+      candidateResult,
+      teamResult,
+      offerResult,
+    ] = await Promise.all([
+      supabase
+        .from("successful_hires")
+        .select("*")
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("candidates")
-          .select("id, full_name")
-          .order("created_at", { ascending: false }),
+      supabase
+        .from("candidates")
+        .select("id, full_name")
+        .order("created_at", { ascending: false }),
 
-        supabase.rpc("get_my_team"),
-      ]);
+      supabase.rpc("get_my_team"),
+
+      supabase
+        .from("commission_entries")
+        .select("*")
+        .order("offer_name", { ascending: true }),
+    ]);
 
     if (hireResult.error) {
       setError(hireResult.error.message);
@@ -128,6 +138,15 @@ export default function SuccessfulHires() {
       );
     }
 
+    if (offerResult.error) {
+      setError(
+        "Could not load commission offers: " +
+          offerResult.error.message
+      );
+    } else {
+      setOffers(offerResult.data || []);
+    }
+
     setLoading(false);
   }
 
@@ -135,6 +154,26 @@ export default function SuccessfulHires() {
     setForm((previous) => ({
       ...previous,
       [field]: value,
+    }));
+  }
+
+  function selectOffer(offerName) {
+    const selectedOffer = offers.find(
+      (offer) => offer.offer_name === offerName
+    );
+
+    setForm((previous) => ({
+      ...previous,
+      offer_name: offerName,
+      recruiter_commission: selectedOffer
+        ? String(selectedOffer.recruiter_commission ?? 0)
+        : "0",
+      team_leader_commission: selectedOffer
+        ? String(selectedOffer.team_leader_commission ?? 0)
+        : "0",
+      founder_commission: selectedOffer
+        ? String(selectedOffer.founder_commission ?? 0)
+        : "0",
     }));
   }
 
@@ -169,35 +208,28 @@ export default function SuccessfulHires() {
       return;
     }
 
-    if (
-      !form.company_name.trim() ||
-      !form.founder_name.trim()
-    ) {
+    if (!form.offer_name) {
+      setError("Please select an Offer.");
+      setSaving(false);
+      return;
+    }
+
+    if (!form.company_name.trim() || !form.founder_name.trim()) {
       setError("Please complete the company and Founder name.");
       setSaving(false);
       return;
     }
 
-    const recruiterCommission = Number(
-      form.recruiter_commission
-    );
-
-    const teamLeaderCommission = Number(
-      form.team_leader_commission
-    );
-
-    const founderCommission = Number(
-      form.founder_commission
-    );
+    const recruiterCommission = Number(form.recruiter_commission);
+    const teamLeaderCommission = Number(form.team_leader_commission);
+    const founderCommission = Number(form.founder_commission);
 
     if (
       [
         recruiterCommission,
         teamLeaderCommission,
         founderCommission,
-      ].some(
-        (value) => !Number.isFinite(value) || value < 0
-      )
+      ].some((value) => !Number.isFinite(value) || value < 0)
     ) {
       setError(
         "Commission amounts must be valid non-negative numbers."
@@ -206,10 +238,7 @@ export default function SuccessfulHires() {
       return;
     }
 
-    if (
-      teamLeaderCommission > 0 &&
-      !teamLeader
-    ) {
+    if (teamLeaderCommission > 0 && !teamLeader) {
       setError(
         "Please select a Team Leader for their commission."
       );
@@ -231,6 +260,7 @@ export default function SuccessfulHires() {
     const hirePayload = {
       candidate_id: candidate.id,
       candidate_name: candidate.full_name,
+      offer_name: form.offer_name,
       company_name: form.company_name.trim(),
       job_title: form.job_title.trim() || null,
 
@@ -251,12 +281,11 @@ export default function SuccessfulHires() {
       hiring_date: form.hiring_date,
     };
 
-    const { data: hire, error: hireError } =
-      await supabase
-        .from("successful_hires")
-        .insert(hirePayload)
-        .select()
-        .single();
+    const { data: hire, error: hireError } = await supabase
+      .from("successful_hires")
+      .insert(hirePayload)
+      .select()
+      .single();
 
     if (hireError) {
       setError(hireError.message);
@@ -275,9 +304,7 @@ export default function SuccessfulHires() {
       },
       {
         successful_hire_id: hire.id,
-        user_id: teamLeader
-          ? teamLeader.member_id
-          : null,
+        user_id: teamLeader ? teamLeader.member_id : null,
         user_name: teamLeader
           ? teamLeader.member_name
           : "No Team Leader",
@@ -304,7 +331,6 @@ export default function SuccessfulHires() {
         "Hire saved, but commissions could not be created: " +
           commissionError.message
       );
-
       await loadPage();
       setSaving(false);
       return;
@@ -315,21 +341,9 @@ export default function SuccessfulHires() {
     );
 
     setForm({
-      candidate_id: "",
-      company_name: "",
-      job_title: "",
+      ...initialForm,
       hiring_date: new Date().toISOString().split("T")[0],
-
-      recruiter_id: "",
-      recruiter_name: "",
-      recruiter_commission: "0",
-
-      team_leader_id: "",
-      team_leader_name: "",
-      team_leader_commission: "0",
-
       founder_name: form.founder_name,
-      founder_commission: "0",
     });
 
     await loadPage();
@@ -353,9 +367,7 @@ export default function SuccessfulHires() {
       .eq("id", hire.id);
 
     if (deleteError) {
-      setError(
-        "Could not delete hire: " + deleteError.message
-      );
+      setError("Could not delete hire: " + deleteError.message);
       setDeletingId(null);
       return;
     }
@@ -432,13 +444,33 @@ export default function SuccessfulHires() {
             }
           >
             <option value="">Select Candidate</option>
-
             {candidates.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.full_name}
               </option>
             ))}
           </select>
+
+          <label>Offer Name</label>
+          <select
+            required
+            style={inputStyle}
+            value={form.offer_name}
+            onChange={(e) => selectOffer(e.target.value)}
+          >
+            <option value="">Select Offer</option>
+            {offers.map((offer) => (
+              <option key={offer.id} value={offer.offer_name}>
+                {offer.offer_name}
+              </option>
+            ))}
+          </select>
+
+          {offers.length === 0 && (
+            <p style={{ color: "#ffb84d", marginTop: "-8px" }}>
+              No offers found. Add offers first in Commission Structure.
+            </p>
+          )}
 
           <label>Company Name</label>
           <input
@@ -495,7 +527,6 @@ export default function SuccessfulHires() {
               }}
             >
               <option value="">Select Recruiter</option>
-
               {recruiters.map((recruiter) => (
                 <option
                   key={recruiter.member_id}
@@ -514,10 +545,7 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.recruiter_commission}
               onChange={(e) =>
-                updateForm(
-                  "recruiter_commission",
-                  e.target.value
-                )
+                updateForm("recruiter_commission", e.target.value)
               }
             />
           </div>
@@ -544,7 +572,6 @@ export default function SuccessfulHires() {
               }}
             >
               <option value="">No Team Leader</option>
-
               {teamLeaders.map((leader) => (
                 <option
                   key={leader.member_id}
@@ -563,10 +590,7 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.team_leader_commission}
               onChange={(e) =>
-                updateForm(
-                  "team_leader_commission",
-                  e.target.value
-                )
+                updateForm("team_leader_commission", e.target.value)
               }
             />
           </div>
@@ -593,10 +617,7 @@ export default function SuccessfulHires() {
               style={inputStyle}
               value={form.founder_commission}
               onChange={(e) =>
-                updateForm(
-                  "founder_commission",
-                  e.target.value
-                )
+                updateForm("founder_commission", e.target.value)
               }
             />
           </div>
@@ -626,6 +647,7 @@ export default function SuccessfulHires() {
               <thead>
                 <tr>
                   <th>Candidate</th>
+                  <th>Offer</th>
                   <th>Company</th>
                   <th>Recruiter</th>
                   <th>Team Leader</th>
@@ -639,6 +661,7 @@ export default function SuccessfulHires() {
                 {hires.map((hire) => (
                   <tr key={hire.id}>
                     <td>{hire.candidate_name}</td>
+                    <td>{hire.offer_name || "—"}</td>
                     <td>{hire.company_name}</td>
                     <td>{hire.recruiter_name}</td>
                     <td>{hire.team_leader_name || "—"}</td>
