@@ -253,28 +253,35 @@ export default function Home() {
       0
     );
 
-  const recruiterPerformance = recruiters.map((recruiter) => {
-    const recruiterHires = hires.filter(
-      (hire) => hire.recruiter_id === recruiter.member_id
-    );
-
-    const recruiterCommission = commissions
-      .filter(
-        (item) =>
-          item.user_id === recruiter.member_id &&
-          item.user_role === "Recruiter"
-      )
-      .reduce(
-        (total, item) => total + Number(item.amount || 0),
-        0
+  // Recruiter performance and ranking
+  const recruiterPerformance = recruiters
+    .map((recruiter) => {
+      const recruiterHires = hires.filter(
+        (hire) => hire.recruiter_id === recruiter.member_id
       );
 
-    return {
-      ...recruiter,
-      hire_count: recruiterHires.length,
-      commission_total: recruiterCommission,
-    };
-  });
+      const recruiterCommission = commissions
+        .filter(
+          (item) =>
+            item.user_id === recruiter.member_id &&
+            item.user_role === "Recruiter"
+        )
+        .reduce(
+          (total, item) => total + Number(item.amount || 0),
+          0
+        );
+
+      return {
+        ...recruiter,
+        hire_count: recruiterHires.length,
+        commission_total: recruiterCommission,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.hire_count - a.hire_count ||
+        b.commission_total - a.commission_total
+    );
 
   return (
     <main style={styles.page}>
@@ -418,8 +425,13 @@ export default function Home() {
             <section style={styles.teamSection}>
               <h2 style={styles.sectionTitle}>
                 <ScorpionMark size={29} />
-                Recruiter Performance
+                Recruiter Performance & Ranking
               </h2>
+
+              <p style={styles.muted}>
+                Recruiters are ranked by successful hires.
+                Commission total breaks ties.
+              </p>
 
               {recruiterPerformance.length === 0 ? (
                 <p style={styles.muted}>
@@ -430,6 +442,7 @@ export default function Home() {
                   <table style={styles.table}>
                     <thead>
                       <tr>
+                        <th style={styles.cell}>Rank</th>
                         <th style={styles.cell}>Recruiter</th>
                         <th style={styles.cell}>Candidates</th>
                         <th style={styles.cell}>Successful Hires</th>
@@ -438,8 +451,14 @@ export default function Home() {
                     </thead>
 
                     <tbody>
-                      {recruiterPerformance.map((recruiter) => (
+                      {recruiterPerformance.map((recruiter, index) => (
                         <tr key={recruiter.member_id}>
+                          <td style={styles.cell}>
+                            <span style={styles.rankBadge}>
+                              #{index + 1}
+                            </span>
+                          </td>
+
                           <td style={styles.cell}>
                             <strong>{recruiter.member_name}</strong>
                             <br />
@@ -453,7 +472,9 @@ export default function Home() {
                           </td>
 
                           <td style={styles.cell}>
-                            {recruiter.hire_count}
+                            <strong style={{ color: "#f2d477" }}>
+                              {recruiter.hire_count}
+                            </strong>
                           </td>
 
                           <td style={styles.cell}>
@@ -725,7 +746,7 @@ const styles = {
 
   table: {
     width: "100%",
-    minWidth: 550,
+    minWidth: 600,
     borderCollapse: "collapse",
     marginTop: 15,
     textAlign: "left"
@@ -735,6 +756,18 @@ const styles = {
     padding: 13,
     borderBottom: "1px solid #59451d",
     verticalAlign: "top"
+  },
+
+  rankBadge: {
+    display: "inline-block",
+    minWidth: 34,
+    textAlign: "center",
+    padding: "6px 8px",
+    borderRadius: 7,
+    color: "#080808",
+    background: "linear-gradient(135deg,#fff0a6,#d4af37,#98701e)",
+    fontWeight: "900",
+    fontSize: 12
   },
 
   error: {
