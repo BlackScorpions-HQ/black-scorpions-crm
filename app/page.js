@@ -64,7 +64,6 @@ export default function Home() {
   const [commissions, setCommissions] = useState([]);
   const [analyticsError, setAnalyticsError] = useState("");
 
-  // Account change requests
   const [changeRequests, setChangeRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [processingRequest, setProcessingRequest] = useState("");
@@ -184,6 +183,7 @@ export default function Home() {
         "id, user_id, user_name, user_email, request_type, old_value, requested_value, status, created_at"
       )
       .eq("status", "Pending")
+      .in("request_type", ["full_name", "phone"])
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -251,7 +251,6 @@ export default function Home() {
   function requestTypeLabel(type) {
     if (type === "full_name") return "NAME CHANGE";
     if (type === "phone") return "PHONE NUMBER CHANGE";
-    if (type === "password") return "PASSWORD RESET";
     return type;
   }
 
@@ -312,6 +311,10 @@ export default function Home() {
     (member) => member.member_role === "Recruiter"
   );
 
+  const teamLeaders = team.filter(
+    (member) => member.member_role === "Team Leader"
+  );
+
   const totalCandidates = team.reduce(
     (total, member) =>
       total + Number(member.candidate_count || 0),
@@ -369,6 +372,49 @@ export default function Home() {
         ...recruiter,
         hire_count: recruiterHires.length,
         commission_total: recruiterCommission,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.hire_count - a.hire_count ||
+        b.commission_total - a.commission_total
+    );
+
+  // Team Leader Performance & Ranking
+  const teamLeaderPerformance = teamLeaders
+    .map((leader) => {
+      const leaderHires = hires.filter(
+        (hire) => hire.team_leader_id === leader.member_id
+      );
+
+      const leaderCommission = commissions
+        .filter(
+          (item) =>
+            item.user_id === leader.member_id &&
+            item.user_role === "Team Leader"
+        )
+        .reduce(
+          (total, item) => total + Number(item.amount || 0),
+          0
+        );
+
+      const leaderRecruiters = recruiters.filter(
+        (recruiter) =>
+          recruiter.team_leader_name === leader.member_name
+      );
+
+      const leaderCandidates = leaderRecruiters.reduce(
+        (total, recruiter) =>
+          total + Number(recruiter.candidate_count || 0),
+        0
+      );
+
+      return {
+        ...leader,
+        team_size: leaderRecruiters.length,
+        candidate_total: leaderCandidates,
+        hire_count: leaderHires.length,
+        commission_total: leaderCommission,
       };
     })
     .sort(
@@ -466,28 +512,19 @@ export default function Home() {
                     {request.user_email}
                   </p>
 
-                  {request.request_type !== "password" && (
-                    <div style={styles.requestValues}>
-                      <div>
-                        <span>PREVIOUS VALUE</span>
-                        <p>{request.old_value || "Not provided"}</p>
-                      </div>
-
-                      <div>
-                        <span>REQUESTED VALUE</span>
-                        <p style={{ color: "#f2d477" }}>
-                          {request.requested_value || "Not provided"}
-                        </p>
-                      </div>
+                  <div style={styles.requestValues}>
+                    <div>
+                      <span>PREVIOUS VALUE</span>
+                      <p>{request.old_value || "Not provided"}</p>
                     </div>
-                  )}
 
-                  {request.request_type === "password" && (
-                    <div style={styles.passwordNotice}>
-                      🔐 Password reset requested. No password is stored.
-                      Approval will send a secure reset email.
+                    <div>
+                      <span>REQUESTED VALUE</span>
+                      <p style={{ color: "#f2d477" }}>
+                        {request.requested_value || "Not provided"}
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   <p style={styles.requestDate}>
                     Submitted:{" "}
@@ -646,71 +683,148 @@ export default function Home() {
           )}
 
           {!analyticsError && !teamError && (
-            <section style={styles.teamSection}>
-              <h2 style={styles.sectionTitle}>
-                <ScorpionMark size={29} />
-                Recruiter Performance & Ranking
-              </h2>
+            <>
+              {/* RECRUITER PERFORMANCE */}
+              <section style={styles.teamSection}>
+                <h2 style={styles.sectionTitle}>
+                  <ScorpionMark size={29} />
+                  Recruiter Performance & Ranking
+                </h2>
 
-              <p style={styles.muted}>
-                Recruiters are ranked by successful hires.
-                Commission total breaks ties.
-              </p>
-
-              {recruiterPerformance.length === 0 ? (
                 <p style={styles.muted}>
-                  No Recruiters found in this team yet.
+                  Recruiters are ranked by successful hires.
+                  Commission total breaks ties.
                 </p>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={styles.cell}>Rank</th>
-                        <th style={styles.cell}>Recruiter</th>
-                        <th style={styles.cell}>Candidates</th>
-                        <th style={styles.cell}>Successful Hires</th>
-                        <th style={styles.cell}>Commissions</th>
-                      </tr>
-                    </thead>
 
-                    <tbody>
-                      {recruiterPerformance.map((recruiter, index) => (
-                        <tr key={recruiter.member_id}>
-                          <td style={styles.cell}>
-                            <span style={styles.rankBadge}>
-                              #{index + 1}
-                            </span>
-                          </td>
-
-                          <td style={styles.cell}>
-                            <strong>{recruiter.member_name}</strong>
-                            <br />
-                            <span style={styles.muted}>
-                              {recruiter.member_email}
-                            </span>
-                          </td>
-
-                          <td style={styles.cell}>
-                            {recruiter.candidate_count || 0}
-                          </td>
-
-                          <td style={styles.cell}>
-                            <strong style={{ color: "#f2d477" }}>
-                              {recruiter.hire_count}
-                            </strong>
-                          </td>
-
-                          <td style={styles.cell}>
-                            {recruiter.commission_total.toLocaleString()} EGP
-                          </td>
+                {recruiterPerformance.length === 0 ? (
+                  <p style={styles.muted}>
+                    No Recruiters found in this team yet.
+                  </p>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={styles.cell}>Rank</th>
+                          <th style={styles.cell}>Recruiter</th>
+                          <th style={styles.cell}>Candidates</th>
+                          <th style={styles.cell}>Successful Hires</th>
+                          <th style={styles.cell}>Commissions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+
+                      <tbody>
+                        {recruiterPerformance.map((recruiter, index) => (
+                          <tr key={recruiter.member_id}>
+                            <td style={styles.cell}>
+                              <span style={styles.rankBadge}>
+                                #{index + 1}
+                              </span>
+                            </td>
+
+                            <td style={styles.cell}>
+                              <strong>{recruiter.member_name}</strong>
+                              <br />
+                              <span style={styles.muted}>
+                                {recruiter.member_email}
+                              </span>
+                            </td>
+
+                            <td style={styles.cell}>
+                              {recruiter.candidate_count || 0}
+                            </td>
+
+                            <td style={styles.cell}>
+                              <strong style={{ color: "#f2d477" }}>
+                                {recruiter.hire_count}
+                              </strong>
+                            </td>
+
+                            <td style={styles.cell}>
+                              {recruiter.commission_total.toLocaleString()} EGP
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              {/* TEAM LEADER PERFORMANCE - CEO ONLY */}
+              {isCEO && (
+                <section style={styles.teamSection}>
+                  <h2 style={styles.sectionTitle}>
+                    <ScorpionMark size={29} />
+                    Team Leader Performance & Ranking
+                  </h2>
+
+                  <p style={styles.muted}>
+                    Team Leaders ranked by successful team placements.
+                    Commission total breaks ties.
+                  </p>
+
+                  {teamLeaderPerformance.length === 0 ? (
+                    <p style={styles.muted}>
+                      No Team Leaders found yet.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.cell}>Rank</th>
+                            <th style={styles.cell}>Team Leader</th>
+                            <th style={styles.cell}>Recruiters</th>
+                            <th style={styles.cell}>Candidates</th>
+                            <th style={styles.cell}>Successful Hires</th>
+                            <th style={styles.cell}>TL Commissions</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {teamLeaderPerformance.map((leader, index) => (
+                            <tr key={leader.member_id}>
+                              <td style={styles.cell}>
+                                <span style={styles.rankBadge}>
+                                  #{index + 1}
+                                </span>
+                              </td>
+
+                              <td style={styles.cell}>
+                                <strong>{leader.member_name}</strong>
+                                <br />
+                                <span style={styles.muted}>
+                                  {leader.member_email}
+                                </span>
+                              </td>
+
+                              <td style={styles.cell}>
+                                {leader.team_size}
+                              </td>
+
+                              <td style={styles.cell}>
+                                {leader.candidate_total}
+                              </td>
+
+                              <td style={styles.cell}>
+                                <strong style={{ color: "#f2d477" }}>
+                                  {leader.hire_count}
+                                </strong>
+                              </td>
+
+                              <td style={styles.cell}>
+                                {leader.commission_total.toLocaleString()} EGP
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
               )}
-            </section>
+            </>
           )}
 
           <section style={styles.teamSection}>
@@ -1039,16 +1153,6 @@ const styles = {
     background: "#101010",
     borderRadius: 8,
     border: "1px solid #49391b"
-  },
-
-  passwordNotice: {
-    padding: 13,
-    background: "#101010",
-    border: "1px solid #49391b",
-    borderRadius: 8,
-    color: "#d7c58c",
-    fontSize: 12,
-    lineHeight: 1.6
   },
 
   requestDate: {
