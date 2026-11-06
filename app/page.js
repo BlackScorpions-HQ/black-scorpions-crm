@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -63,6 +64,13 @@ export default function Home() {
   const [commissions, setCommissions] = useState([]);
   const [analyticsError, setAnalyticsError] = useState("");
 
+  // Account change requests
+  const [changeRequests, setChangeRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [processingRequest, setProcessingRequest] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestError, setRequestError] = useState("");
+
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
@@ -98,6 +106,10 @@ export default function Home() {
         ) {
           await loadTeam();
           await loadAnalytics();
+        }
+
+        if (profile.role === "CEO") {
+          await loadChangeRequests();
         }
       } catch (err) {
         setError(err.message || "Something went wrong.");
@@ -161,6 +173,88 @@ export default function Home() {
     loadDashboard();
   }, [supabase]);
 
+  // Load pending account change requests for CEO
+  async function loadChangeRequests() {
+    setRequestsLoading(true);
+    setRequestError("");
+
+    const { data, error } = await supabase
+      .from("account_change_requests")
+      .select(
+        "id, user_id, user_name, user_email, request_type, old_value, requested_value, status, created_at"
+      )
+      .eq("status", "Pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setRequestError(error.message);
+    } else {
+      setChangeRequests(data || []);
+    }
+
+    setRequestsLoading(false);
+  }
+
+  // CEO approves or denies a request through the secure API
+  async function handleRequestDecision(requestId, action) {
+    setProcessingRequest(requestId);
+    setRequestMessage("");
+    setRequestError("");
+
+    try {
+      const {
+        data: { session },
+        error: sessionError
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("Your session has expired. Please log in again.");
+      }
+
+      const response = await fetch(
+        "/api/admin/account-change-request",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            request_id: requestId,
+            action
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || result.message || "Request failed."
+        );
+      }
+
+      setRequestMessage(
+        action === "approve"
+          ? "Request approved successfully."
+          : "Request denied successfully."
+      );
+
+      await loadChangeRequests();
+    } catch (err) {
+      setRequestError(err.message || "Something went wrong.");
+    }
+
+    setProcessingRequest("");
+  }
+
+  function requestTypeLabel(type) {
+    if (type === "full_name") return "NAME CHANGE";
+    if (type === "phone") return "PHONE NUMBER CHANGE";
+    if (type === "password") return "PASSWORD RESET";
+    return type;
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -210,7 +304,8 @@ export default function Home() {
         ["My Candidates", "/candidates", "Add and view candidates"],
         ["Job Offers", "/job-offers", "Explore available vacancies"],
         ["My Hires", "/successful-hires", "Track successful placements"],
-        ["Commission Structure", "/commission-structures", "View offer commission rates"]
+        ["Commission Structure", "/commission-structures", "View offer commission rates"],
+        ["Settings", "/settings", "Manage your account settings"]
       ];
 
   const recruiters = team.filter(
@@ -308,6 +403,136 @@ export default function Home() {
           {isCEO ? "CEO / FOUNDER" : role.toUpperCase()}
         </div>
       </section>
+
+      {/* CEO ACCOUNT CHANGE NOTIFICATIONS */}
+      {isCEO && (
+        <section style={styles.notificationSection}>
+          <div style={styles.notificationHeader}>
+            <div>
+              <h2 style={styles.notificationTitle}>
+                <ScorpionMark size={27} />
+                ACCOUNT CHANGE REQUESTS
+              </h2>
+
+              <p style={styles.notificationSubtitle}>
+                Review and manage employee account change requests.
+              </p>
+            </div>
+
+            <div style={styles.requestCount}>
+              {changeRequests.length}
+              <span>PENDING</span>
+            </div>
+          </div>
+
+          {requestMessage && (
+            <div style={styles.requestSuccess}>
+              {requestMessage}
+            </div>
+          )}
+
+          {requestError && (
+            <div style={styles.requestError}>
+              {requestError}
+            </div>
+          )}
+
+          {requestsLoading ? (
+            <p style={styles.muted}>Loading requests...</p>
+          ) : changeRequests.length === 0 ? (
+            <div style={styles.noRequests}>
+              <ScorpionMark size={30} />
+              <p>No pending account change requests.</p>
+            </div>
+          ) : (
+            <div style={styles.requestGrid}>
+              {changeRequests.map((request) => (
+                <div key={request.id} style={styles.requestCard}>
+                  <div style={styles.requestCardTop}>
+                    <span style={styles.requestType}>
+                      {requestTypeLabel(request.request_type)}
+                    </span>
+
+                    <span style={styles.pendingBadge}>
+                      PENDING
+                    </span>
+                  </div>
+
+                  <h3 style={styles.requestUser}>
+                    {request.user_name || "Unknown User"}
+                  </h3>
+
+                  <p style={styles.requestEmail}>
+                    {request.user_email}
+                  </p>
+
+                  {request.request_type !== "password" && (
+                    <div style={styles.requestValues}>
+                      <div>
+                        <span>PREVIOUS VALUE</span>
+                        <p>{request.old_value || "Not provided"}</p>
+                      </div>
+
+                      <div>
+                        <span>REQUESTED VALUE</span>
+                        <p style={{ color: "#f2d477" }}>
+                          {request.requested_value || "Not provided"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {request.request_type === "password" && (
+                    <div style={styles.passwordNotice}>
+                      🔐 Password reset requested. No password is stored.
+                      Approval will send a secure reset email.
+                    </div>
+                  )}
+
+                  <p style={styles.requestDate}>
+                    Submitted:{" "}
+                    {new Date(request.created_at).toLocaleString()}
+                  </p>
+
+                  <div style={styles.decisionButtons}>
+                    <button
+                      style={styles.approveButton}
+                      disabled={!!processingRequest}
+                      onClick={() =>
+                        handleRequestDecision(request.id, "approve")
+                      }
+                    >
+                      {processingRequest === request.id
+                        ? "PROCESSING..."
+                        : "✓ APPROVE"}
+                    </button>
+
+                    <button
+                      style={styles.denyButton}
+                      disabled={!!processingRequest}
+                      onClick={() =>
+                        handleRequestDecision(request.id, "deny")
+                      }
+                    >
+                      {processingRequest === request.id
+                        ? "PROCESSING..."
+                        : "✕ DENY"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            style={styles.refreshRequests}
+            onClick={loadChangeRequests}
+            disabled={requestsLoading || !!processingRequest}
+          >
+            ↻ REFRESH REQUESTS
+          </button>
+        </section>
+      )}
 
       <h2 style={styles.sectionTitle}>
         <ScorpionMark size={28} />
@@ -708,6 +933,197 @@ const styles = {
     border: "1px solid #e0b943",
     background: "linear-gradient(135deg,rgba(54,40,10,.95),rgba(10,10,10,.98))",
     boxShadow: "0 0 16px rgba(212,175,55,.18)"
+  },
+
+  notificationSection: {
+    marginBottom: 35,
+    padding: 22,
+    background: "linear-gradient(145deg,rgba(42,32,12,.98),rgba(9,9,9,.98))",
+    border: "1px solid #d4af37",
+    borderRadius: 15,
+    boxShadow: "0 0 25px rgba(212,175,55,.16)"
+  },
+
+  notificationHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 15,
+    marginBottom: 20
+  },
+
+  notificationTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    color: "#f2d477",
+    fontSize: 19,
+    margin: 0
+  },
+
+  notificationSubtitle: {
+    color: "#aaa",
+    fontSize: 13,
+    lineHeight: 1.6
+  },
+
+  requestCount: {
+    minWidth: 70,
+    padding: "12px 15px",
+    border: "1px solid #d4af37",
+    borderRadius: 10,
+    textAlign: "center",
+    color: "#f2d477",
+    fontSize: 25,
+    fontWeight: "900",
+    background: "rgba(212,175,55,.08)"
+  },
+
+  requestGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+    gap: 15
+  },
+
+  requestCard: {
+    padding: 17,
+    background: "linear-gradient(145deg,#1d1a12,#0b0b0b)",
+    border: "1px solid #8d6c25",
+    borderRadius: 11
+  },
+
+  requestCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 15
+  },
+
+  requestType: {
+    color: "#f2d477",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1
+  },
+
+  pendingBadge: {
+    color: "#f2d477",
+    border: "1px solid #9b792c",
+    padding: "5px 8px",
+    borderRadius: 5,
+    fontSize: 9,
+    fontWeight: "bold"
+  },
+
+  requestUser: {
+    color: "#fff",
+    margin: "0 0 5px",
+    overflowWrap: "anywhere"
+  },
+
+  requestEmail: {
+    color: "#999",
+    fontSize: 12,
+    overflowWrap: "anywhere",
+    marginBottom: 17
+  },
+
+  requestValues: {
+    display: "grid",
+    gap: 12,
+    padding: 13,
+    background: "#101010",
+    borderRadius: 8,
+    border: "1px solid #49391b"
+  },
+
+  passwordNotice: {
+    padding: 13,
+    background: "#101010",
+    border: "1px solid #49391b",
+    borderRadius: 8,
+    color: "#d7c58c",
+    fontSize: 12,
+    lineHeight: 1.6
+  },
+
+  requestDate: {
+    color: "#777",
+    fontSize: 10,
+    marginTop: 14
+  },
+
+  decisionButtons: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 9,
+    marginTop: 17
+  },
+
+  approveButton: {
+    padding: 12,
+    background: "linear-gradient(135deg,#fff0a6,#d4af37,#98701e)",
+    color: "#080808",
+    border: "none",
+    borderRadius: 7,
+    fontWeight: "900",
+    fontSize: 11,
+    cursor: "pointer"
+  },
+
+  denyButton: {
+    padding: 12,
+    background: "#291313",
+    color: "#ff9999",
+    border: "1px solid #883d3d",
+    borderRadius: 7,
+    fontWeight: "900",
+    fontSize: 11,
+    cursor: "pointer"
+  },
+
+  refreshRequests: {
+    width: "100%",
+    marginTop: 18,
+    padding: 13,
+    background: "#171717",
+    color: "#f2d477",
+    border: "1px solid #8d6c25",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer"
+  },
+
+  noRequests: {
+    textAlign: "center",
+    padding: 25,
+    color: "#aaa",
+    border: "1px dashed #72571e",
+    borderRadius: 10
+  },
+
+  requestSuccess: {
+    padding: 12,
+    marginBottom: 15,
+    color: "#65d69a",
+    background: "rgba(40,120,75,.12)",
+    border: "1px solid #287a50",
+    borderRadius: 7,
+    fontSize: 13
+  },
+
+  requestError: {
+    padding: 12,
+    marginBottom: 15,
+    color: "#ff8888",
+    background: "rgba(150,30,30,.12)",
+    border: "1px solid #883d3d",
+    borderRadius: 7,
+    fontSize: 13
   },
 
   teamSection: {
