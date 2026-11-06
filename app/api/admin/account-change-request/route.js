@@ -72,7 +72,20 @@ export async function POST(request) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (roleError || !profile || profile.role !== "CEO") {
+    if (roleError) {
+      console.error("CEO role lookup error:", roleError);
+
+      return NextResponse.json(
+        {
+          error: "Unable to verify CEO permissions",
+          details: roleError.message,
+          code: roleError.code,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!profile || profile.role !== "CEO") {
       return NextResponse.json(
         { error: "CEO access required" },
         { status: 403 }
@@ -81,12 +94,15 @@ export async function POST(request) {
 
     const body = await request.json();
 
-    requestId = body.request_id;
+    requestId =
+      typeof body.request_id === "string"
+        ? body.request_id.trim()
+        : "";
+
     const action = body.action;
 
     if (
-      typeof requestId !== "string" ||
-      !requestId.trim() ||
+      !requestId ||
       !["approve", "deny"].includes(action)
     ) {
       return NextResponse.json(
@@ -95,45 +111,82 @@ export async function POST(request) {
       );
     }
 
-    const { data: changeRequest, error: fetchError } =
-      await admin
-        .from("account_change_requests")
-        .select("*")
-        .eq("id", requestId)
-        .maybeSingle();
+    // Find the requested account change
+    const {
+      data: changeRequest,
+      error: fetchError,
+    } = await admin
+      .from("account_change_requests")
+      .select("*")
+      .eq("id", requestId)
+      .maybeSingle();
 
-    if (fetchError || !changeRequest) {
+    if (fetchError) {
+      console.error("Change request database error:", fetchError);
+
       return NextResponse.json(
-        { error: "Change request not found" },
+        {
+          error: "Database error while finding the request",
+          details: fetchError.message,
+          code: fetchError.code,
+          request_id: requestId,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!changeRequest) {
+      console.error(
+        "Change request does not exist:",
+        requestId
+      );
+
+      return NextResponse.json(
+        {
+          error: "Change request not found",
+          request_id: requestId,
+          details: "No matching row was returned from account_change_requests.",
+        },
         { status: 404 }
       );
     }
 
     if (changeRequest.status !== "Pending") {
       return NextResponse.json(
-        { error: "This request has already been processed" },
+        {
+          error: "This request has already been processed",
+          current_status: changeRequest.status,
+        },
         { status: 409 }
       );
     }
 
     // Deny request
     if (action === "deny") {
-      const { data: deniedRequest, error: denyError } =
-        await admin
-          .from("account_change_requests")
-          .update({
-            status: "Denied",
-            reviewed_by: user.id,
-            reviewed_at: new Date().toISOString(),
-          })
-          .eq("id", requestId)
-          .eq("status", "Pending")
-          .select("id")
-          .maybeSingle();
+      const {
+        data: deniedRequest,
+        error: denyError,
+      } = await admin
+        .from("account_change_requests")
+        .update({
+          status: "Denied",
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId)
+        .eq("status", "Pending")
+        .select("id")
+        .maybeSingle();
 
       if (denyError || !deniedRequest) {
+        console.error("Deny request error:", denyError);
+
         return NextResponse.json(
-          { error: "Unable to deny this request. It may already be processed." },
+          {
+            error: "Unable to deny this request",
+            details: denyError?.message || "Request may already be processed.",
+            code: denyError?.code,
+          },
           { status: 409 }
         );
       }
@@ -145,25 +198,36 @@ export async function POST(request) {
     }
 
     // Claim request to prevent duplicate processing
-    const { data: claimedRequest, error: claimError } =
-      await admin
-        .from("account_change_requests")
-        .update({ status: "Processing" })
-        .eq("id", requestId)
-        .eq("status", "Pending")
-        .select("id")
-        .maybeSingle();
+    const {
+      data: claimedRequest,
+      error: claimError,
+    } = await admin
+      .from("account_change_requests")
+      .update({ status: "Processing" })
+      .eq("id", requestId)
+      .eq("status", "Pending")
+      .select("id")
+      .maybeSingle();
 
     if (claimError || !claimedRequest) {
+      console.error("Claim request error:", claimError);
+
       return NextResponse.json(
-        { error: "This request is already being processed" },
+        {
+          error: "This request is already being processed",
+          details: claimError?.message,
+        },
         { status: 409 }
       );
     }
 
     // Get the actual account from Supabase Auth
-    const { data: accountData, error: accountError } =
-      await admin.auth.admin.getUserById(changeRequest.user_id);
+    const {
+      data: accountData,
+      error: accountError,
+    } = await admin.auth.admin.getUserById(
+      changeRequest.user_id
+    );
 
     if (accountError || !accountData?.user) {
       await admin
@@ -217,7 +281,7 @@ export async function POST(request) {
       }
     }
 
-    // Approve password change by sending a secure recovery email
+    // Password reset email
     else if (changeRequest.request_type === "password") {
       const email = targetUser.email;
 
@@ -236,18 +300,23 @@ export async function POST(request) {
     }
 
     // Mark request as approved
-    const { error: approveError } = await admin
-      .from("account_change_requests")
-      .update({
-        status: "Approved",
-        reviewed_by: user.id,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", requestId)
-      .eq("status", "Processing");
+    const { data: approvedRequest, error: approveError } =
+      await admin
+        .from("account_change_requests")
+        .update({
+          status: "Approved",
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId)
+        .eq("status", "Processing")
+        .select("id")
+        .maybeSingle();
 
-    if (approveError) {
-      throw approveError;
+    if (approveError || !approvedRequest) {
+      throw approveError || new Error(
+        "Could not update request status to Approved."
+      );
     }
 
     return NextResponse.json({
@@ -259,6 +328,8 @@ export async function POST(request) {
     });
 
   } catch (error) {
+    console.error("Account change request API error:", error);
+
     if (admin && requestId) {
       await admin
         .from("account_change_requests")
@@ -268,7 +339,10 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      {
+        error: error.message || "Internal server error",
+        code: error.code || null,
+      },
       { status: 500 }
     );
   }
