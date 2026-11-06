@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -253,7 +252,7 @@ export default function Home() {
       0
     );
 
-  // Recruiter performance and ranking
+  // Recruiter Performance & Ranking
   const recruiterPerformance = recruiters
     .map((recruiter) => {
       const recruiterHires = hires.filter(
