@@ -157,183 +157,180 @@ export default function CommissionStructures() {
 
   const inputStyle = {
     width: "100%",
-    padding: "12px",
-    background: "#171717",
+    padding: "13px 14px",
+    background: "rgba(7,7,7,0.9)",
     color: "#fff",
-    border: "1px solid #454545",
-    borderRadius: "8px",
+    border: "1px solid rgba(212,175,55,0.4)",
+    borderRadius: "9px",
     outline: "none",
     boxSizing: "border-box",
     fontSize: "14px",
+    colorScheme: "dark",
   };
 
-  const goldButton = {
-    background: "#d4a72c",
-    color: "#111",
-    border: "none",
-    borderRadius: "8px",
-    padding: "11px 18px",
+  const labelStyle = {
+    display: "block",
+    color: "#d4af37",
+    fontSize: "11px",
     fontWeight: "bold",
-    cursor: "pointer",
+    letterSpacing: "1px",
+    marginBottom: "8px",
   };
 
   const cardStyle = {
-    background: "#171717",
-    border: "1px solid #383838",
-    borderRadius: "12px",
-    padding: "16px",
-    marginBottom: "14px",
+    background: "linear-gradient(145deg, rgba(25,25,25,0.97), rgba(11,11,11,0.97))",
+    border: "1px solid rgba(212,175,55,0.32)",
+    borderRadius: "15px",
+    padding: "20px",
+    marginBottom: "17px",
+    boxShadow: "0 12px 30px rgba(0,0,0,0.3)",
   };
 
   const totalStyle = {
-    background: "#292313",
-    border: "1px solid #d4a72c",
-    borderRadius: "10px",
-    padding: "14px",
+    background: "linear-gradient(135deg, #241e0e, #17130a)",
+    border: "1px solid rgba(212,175,55,0.65)",
+    borderRadius: "11px",
+    padding: "16px",
     textAlign: "center",
+  };
+
+  const goldButton = {
+    background: "linear-gradient(135deg, #b38b25, #f0d778, #b38b25)",
+    color: "#100d05",
+    border: "1px solid #f4dc88",
+    borderRadius: "8px",
+    padding: "12px 19px",
+    fontWeight: "800",
+    cursor: "pointer",
+    fontSize: "13px",
   };
 
   if (loading) {
     return (
-      <main style={{
-        minHeight: "100vh",
-        background: "#080808",
-        color: "#d4a72c",
-        display: "grid",
-        placeItems: "center",
-        fontSize: "18px",
-      }}>
-        Loading commission structures...
+      <main style={styles.page}>
+        <div style={styles.loadingCard}>
+          <div style={styles.goldLine}></div>
+          <h2 style={styles.heading}>Loading Commission Structure...</h2>
+          <p style={{ color: "#999" }}>BLACK SCORPIONS HQ</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: "#080808",
-      color: "#fff",
-      padding: "24px 16px",
-      fontFamily: "Arial, sans-serif",
-    }}>
-      <div style={{ maxWidth: "1100px", margin: "auto" }}>
+    <main style={styles.page}>
+      <div style={styles.glowOne}></div>
+      <div style={styles.glowTwo}></div>
 
-        <header style={{ marginBottom: "28px" }}>
-          <div style={{
-            color: "#d4a72c",
-            fontSize: "13px",
-            letterSpacing: "3px",
-            fontWeight: "bold",
-          }}>
-            BLACK SCORPIONS
+      <div style={styles.content}>
+        <header style={styles.header}>
+          <div style={styles.brandLine}>
+            <span style={{ fontSize: "27px" }}>🦂</span>
+            <span style={styles.brandName}>BLACK SCORPIONS</span>
           </div>
 
-          <h1 style={{
-            color: "#d4a72c",
-            fontSize: "30px",
-            margin: "10px 0",
-          }}>
-            🦂 Commission Structure
-          </h1>
+          <h1 style={styles.title}>Commission Structure</h1>
 
-          <p style={{ color: "#aaa", margin: 0 }}>
+          <p style={styles.subtitle}>
             Offer commission management
           </p>
 
-          <div style={{
-            marginTop: "14px",
-            display: "inline-block",
-            padding: "7px 12px",
-            borderRadius: "20px",
-            background: "#252016",
-            color: "#d4a72c",
-            fontSize: "13px",
-          }}>
-            {isCEO ? "CEO ACCESS — FULL CONTROL" : `${role || "MEMBER"} — VIEW ONLY`}
+          <div style={styles.accessBadge}>
+            {isCEO
+              ? "♛ CEO ACCESS — FULL CONTROL"
+              : `${role || "MEMBER"} — VIEW ONLY`}
           </div>
+
+          <div style={styles.goldLine}></div>
         </header>
 
         {message && (
-          <div style={{
-            padding: "12px",
-            marginBottom: "18px",
-            borderRadius: "8px",
-            background: "#252016",
-            color: "#e5bd55",
-            border: "1px solid #66501e",
-          }}>
+          <div style={styles.message}>
             {message}
           </div>
         )}
 
         {isCEO && (
           <section style={cardStyle}>
-            <h2 style={{ color: "#d4a72c", marginTop: 0 }}>
-              + Add New Offer
-            </h2>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "12px",
-            }}>
-              <input
-                style={inputStyle}
-                placeholder="Offer Name"
-                value={newEntry.offer_name}
-                onChange={(e) => setNewEntry({
-                  ...newEntry,
-                  offer_name: e.target.value,
-                })}
-              />
-
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                placeholder="Recruiter Commission"
-                value={newEntry.recruiter_commission}
-                onChange={(e) => setNewEntry({
-                  ...newEntry,
-                  recruiter_commission: e.target.value,
-                })}
-              />
-
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                placeholder="Team Leader Commission"
-                value={newEntry.team_leader_commission}
-                onChange={(e) => setNewEntry({
-                  ...newEntry,
-                  team_leader_commission: e.target.value,
-                })}
-              />
-
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                placeholder="Founder Commission"
-                value={newEntry.founder_commission}
-                onChange={(e) => setNewEntry({
-                  ...newEntry,
-                  founder_commission: e.target.value,
-                })}
-              />
+            <div style={styles.sectionHeader}>
+              <div>
+                <span style={styles.eyebrow}>OFFER MANAGEMENT</span>
+                <h2 style={styles.heading}>+ Add New Offer</h2>
+              </div>
+              <span style={styles.headerIcon}>✦</span>
             </div>
 
-            <div style={{ ...totalStyle, marginTop: "14px" }}>
-              <div style={{ color: "#aaa", fontSize: "12px" }}>
-                TOTAL COMMISSION
+            <div style={styles.inputGrid}>
+              <div>
+                <label style={labelStyle}>OFFER NAME</label>
+                <input
+                  style={inputStyle}
+                  placeholder="Enter Offer Name"
+                  value={newEntry.offer_name}
+                  onChange={(e) =>
+                    setNewEntry({
+                      ...newEntry,
+                      offer_name: e.target.value,
+                    })
+                  }
+                />
               </div>
-              <strong style={{
-                color: "#d4a72c",
-                fontSize: "23px",
-                display: "block",
-                marginTop: "5px",
-              }}>
+
+              <div>
+                <label style={labelStyle}>RECRUITER COMMISSION</label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  placeholder="0 EGP"
+                  value={newEntry.recruiter_commission}
+                  onChange={(e) =>
+                    setNewEntry({
+                      ...newEntry,
+                      recruiter_commission: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>TEAM LEADER COMMISSION</label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  placeholder="0 EGP"
+                  value={newEntry.team_leader_commission}
+                  onChange={(e) =>
+                    setNewEntry({
+                      ...newEntry,
+                      team_leader_commission: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>FOUNDER COMMISSION</label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  placeholder="0 EGP"
+                  value={newEntry.founder_commission}
+                  onChange={(e) =>
+                    setNewEntry({
+                      ...newEntry,
+                      founder_commission: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div style={{ ...totalStyle, marginTop: "18px" }}>
+              <div style={styles.totalLabel}>TOTAL COMMISSION</div>
+              <strong style={styles.totalAmount}>
                 {formatMoney(calculateTotal(newEntry))}
               </strong>
             </div>
@@ -343,7 +340,8 @@ export default function CommissionStructures() {
               disabled={saving}
               style={{
                 ...goldButton,
-                marginTop: "14px",
+                width: "100%",
+                marginTop: "17px",
                 opacity: saving ? 0.6 : 1,
               }}
             >
@@ -353,115 +351,120 @@ export default function CommissionStructures() {
         )}
 
         <section>
-          <h2 style={{ color: "#d4a72c", marginBottom: "16px" }}>
-            Offers & Commissions ({entries.length})
-          </h2>
+          <div style={styles.sectionHeader}>
+            <div>
+              <span style={styles.eyebrow}>COMMISSION DATABASE</span>
+              <h2 style={styles.heading}>
+                Offers & Commissions
+              </h2>
+            </div>
+
+            <div style={styles.countBadge}>{entries.length}</div>
+          </div>
 
           {entries.length === 0 ? (
-            <div style={{
-              ...cardStyle,
-              textAlign: "center",
-              color: "#999",
-              padding: "35px 15px",
-            }}>
-              No offers added yet.
+            <div style={styles.emptyState}>
+              <div style={{ fontSize: "38px" }}>🦂</div>
+              <p>No offers added yet.</p>
             </div>
           ) : (
             entries.map((entry) => (
               <div key={entry.id} style={cardStyle}>
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: "12px",
-                }}>
+                <div style={styles.offerHeader}>
+                  <span style={styles.offerIcon}>✦</span>
+                  <span style={styles.offerTitle}>
+                    {entry.offer_name || "Unnamed Offer"}
+                  </span>
+                </div>
+
+                <div style={styles.inputGrid}>
                   <div>
-                    <label style={{ color: "#d4a72c", fontSize: "12px" }}>
-                      OFFER NAME
-                    </label>
+                    <label style={labelStyle}>OFFER NAME</label>
                     <input
                       style={inputStyle}
                       value={entry.offer_name}
                       readOnly={!isCEO}
-                      onChange={(e) => updateEntry(
-                        entry.id, "offer_name", e.target.value
-                      )}
+                      onChange={(e) =>
+                        updateEntry(
+                          entry.id,
+                          "offer_name",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div>
-                    <label style={{ color: "#d4a72c", fontSize: "12px" }}>
-                      RECRUITER
-                    </label>
+                    <label style={labelStyle}>RECRUITER</label>
                     <input
                       style={inputStyle}
                       type="number"
                       min="0"
                       value={entry.recruiter_commission}
                       readOnly={!isCEO}
-                      onChange={(e) => updateEntry(
-                        entry.id, "recruiter_commission", e.target.value
-                      )}
+                      onChange={(e) =>
+                        updateEntry(
+                          entry.id,
+                          "recruiter_commission",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div>
-                    <label style={{ color: "#d4a72c", fontSize: "12px" }}>
-                      TEAM LEADER
-                    </label>
+                    <label style={labelStyle}>TEAM LEADER</label>
                     <input
                       style={inputStyle}
                       type="number"
                       min="0"
                       value={entry.team_leader_commission}
                       readOnly={!isCEO}
-                      onChange={(e) => updateEntry(
-                        entry.id, "team_leader_commission", e.target.value
-                      )}
+                      onChange={(e) =>
+                        updateEntry(
+                          entry.id,
+                          "team_leader_commission",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
 
                   <div>
-                    <label style={{ color: "#d4a72c", fontSize: "12px" }}>
-                      FOUNDER
-                    </label>
+                    <label style={labelStyle}>FOUNDER</label>
                     <input
                       style={inputStyle}
                       type="number"
                       min="0"
                       value={entry.founder_commission}
                       readOnly={!isCEO}
-                      onChange={(e) => updateEntry(
-                        entry.id, "founder_commission", e.target.value
-                      )}
+                      onChange={(e) =>
+                        updateEntry(
+                          entry.id,
+                          "founder_commission",
+                          e.target.value
+                        )
+                      }
                     />
                   </div>
                 </div>
 
-                <div style={{ ...totalStyle, marginTop: "14px" }}>
-                  <div style={{ color: "#aaa", fontSize: "12px" }}>
-                    TOTAL COMMISSION
-                  </div>
-                  <strong style={{
-                    color: "#d4a72c",
-                    fontSize: "23px",
-                    display: "block",
-                    marginTop: "5px",
-                  }}>
+                <div style={{ ...totalStyle, marginTop: "18px" }}>
+                  <div style={styles.totalLabel}>TOTAL COMMISSION</div>
+                  <strong style={styles.totalAmount}>
                     {formatMoney(calculateTotal(entry))}
                   </strong>
                 </div>
 
                 {isCEO && (
-                  <div style={{
-                    display: "flex",
-                    gap: "10px",
-                    marginTop: "14px",
-                    flexWrap: "wrap",
-                  }}>
+                  <div style={styles.actions}>
                     <button
                       onClick={() => saveEntry(entry)}
                       disabled={saving}
-                      style={goldButton}
+                      style={{
+                        ...goldButton,
+                        opacity: saving ? 0.6 : 1,
+                      }}
                     >
                       Save Changes
                     </button>
@@ -469,14 +472,7 @@ export default function CommissionStructures() {
                     <button
                       onClick={() => deleteEntry(entry.id)}
                       disabled={saving}
-                      style={{
-                        background: "#401919",
-                        color: "#ff7777",
-                        border: "1px solid #773333",
-                        borderRadius: "8px",
-                        padding: "11px 18px",
-                        cursor: "pointer",
-                      }}
+                      style={styles.deleteButton}
                     >
                       Delete Offer
                     </button>
@@ -487,18 +483,243 @@ export default function CommissionStructures() {
           )}
         </section>
 
-        <footer style={{
-          textAlign: "center",
-          color: "#666",
-          borderTop: "1px solid #292929",
-          marginTop: "35px",
-          paddingTop: "20px",
-          fontSize: "12px",
-        }}>
-          BLACK SCORPIONS © 2026
+        <footer style={styles.footer}>
+          🦂 BLACK SCORPIONS RECRUITMENT AGENCY
         </footer>
-
       </div>
     </main>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    position: "relative",
+    overflow: "hidden",
+    background: "radial-gradient(ellipse at 50% 0%, #29200d 0%, #111 38%, #050505 100%)",
+    color: "#fff",
+    padding: "28px 18px",
+    fontFamily: "Arial, sans-serif",
+    boxSizing: "border-box",
+  },
+
+  content: {
+    position: "relative",
+    zIndex: 2,
+    maxWidth: "1100px",
+    margin: "0 auto",
+  },
+
+  glowOne: {
+    position: "absolute",
+    top: "-150px",
+    right: "-100px",
+    width: "400px",
+    height: "400px",
+    borderRadius: "50%",
+    background: "rgba(212,175,55,0.09)",
+    filter: "blur(100px)",
+    pointerEvents: "none",
+  },
+
+  glowTwo: {
+    position: "absolute",
+    top: "650px",
+    left: "-150px",
+    width: "350px",
+    height: "350px",
+    borderRadius: "50%",
+    background: "rgba(130,130,130,0.07)",
+    filter: "blur(100px)",
+    pointerEvents: "none",
+  },
+
+  header: {
+    marginBottom: "28px",
+    padding: "15px 5px",
+  },
+
+  brandLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "18px",
+  },
+
+  brandName: {
+    color: "#d4af37",
+    fontSize: "12px",
+    fontWeight: "bold",
+    letterSpacing: "3px",
+  },
+
+  title: {
+    color: "#e5c45b",
+    fontSize: "clamp(29px, 5vw, 43px)",
+    margin: "0 0 10px",
+    fontWeight: "800",
+    textShadow: "0 0 25px rgba(212,175,55,0.18)",
+  },
+
+  subtitle: {
+    color: "#aaa",
+    fontSize: "14px",
+    lineHeight: 1.6,
+  },
+
+  accessBadge: {
+    display: "inline-block",
+    padding: "9px 13px",
+    borderRadius: "8px",
+    background: "rgba(212,175,55,0.1)",
+    color: "#e5c45b",
+    border: "1px solid rgba(212,175,55,0.4)",
+    fontSize: "11px",
+    fontWeight: "bold",
+    letterSpacing: "0.7px",
+    marginTop: "12px",
+  },
+
+  goldLine: {
+    width: "75px",
+    height: "3px",
+    borderRadius: "5px",
+    background: "linear-gradient(90deg, #80621c, #f4d778)",
+    marginTop: "20px",
+  },
+
+  sectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+  },
+
+  eyebrow: {
+    display: "block",
+    color: "#9c8135",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    fontWeight: "bold",
+    marginBottom: "7px",
+  },
+
+  heading: {
+    color: "#e2c15b",
+    fontSize: "21px",
+    margin: 0,
+    fontWeight: "700",
+  },
+
+  headerIcon: {
+    color: "#d4af37",
+    fontSize: "27px",
+  },
+
+  inputGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: "16px",
+  },
+
+  totalLabel: {
+    color: "#aaa",
+    fontSize: "11px",
+    letterSpacing: "2px",
+  },
+
+  totalAmount: {
+    color: "#e5c45b",
+    fontSize: "25px",
+    display: "block",
+    marginTop: "7px",
+  },
+
+  countBadge: {
+    minWidth: "42px",
+    height: "42px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(212,175,55,0.12)",
+    border: "1px solid rgba(212,175,55,0.4)",
+    borderRadius: "10px",
+    color: "#e5c45b",
+    fontWeight: "bold",
+  },
+
+  offerHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "19px",
+  },
+
+  offerIcon: {
+    color: "#d4af37",
+    fontSize: "21px",
+  },
+
+  offerTitle: {
+    color: "#e5c45b",
+    fontSize: "17px",
+    fontWeight: "bold",
+  },
+
+  actions: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "16px",
+    flexWrap: "wrap",
+  },
+
+  deleteButton: {
+    background: "rgba(127,29,29,0.25)",
+    color: "#ff8585",
+    border: "1px solid rgba(239,68,68,0.5)",
+    borderRadius: "8px",
+    padding: "12px 19px",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+
+  message: {
+    padding: "14px 16px",
+    marginBottom: "18px",
+    borderRadius: "9px",
+    background: "rgba(212,175,55,0.1)",
+    color: "#e5c45b",
+    border: "1px solid rgba(212,175,55,0.35)",
+    fontSize: "14px",
+  },
+
+  emptyState: {
+    textAlign: "center",
+    padding: "35px 15px",
+    background: "rgba(20,20,20,0.8)",
+    border: "1px dashed rgba(212,175,55,0.3)",
+    borderRadius: "12px",
+    color: "#999",
+  },
+
+  loadingCard: {
+    maxWidth: "450px",
+    margin: "100px auto",
+    textAlign: "center",
+    padding: "30px",
+    background: "#141414",
+    border: "1px solid rgba(212,175,55,0.35)",
+    borderRadius: "15px",
+  },
+
+  footer: {
+    textAlign: "center",
+    color: "#76652f",
+    fontSize: "10px",
+    letterSpacing: "2px",
+    marginTop: "45px",
+    padding: "20px 5px",
+    borderTop: "1px solid rgba(212,175,55,0.15)",
+  },
+};
