@@ -24,7 +24,6 @@ export default function SuccessfulHires() {
   const initialForm = {
     candidate_id: "",
     offer_name: "",
-    company_name: "",
     job_title: "",
     hiring_date: new Date().toISOString().split("T")[0],
     recruiter_id: "",
@@ -208,14 +207,14 @@ export default function SuccessfulHires() {
       return;
     }
 
-    if (!form.offer_name) {
+    if (!form.offer_name.trim()) {
       setError("Please select an Offer.");
       setSaving(false);
       return;
     }
 
-    if (!form.company_name.trim() || !form.founder_name.trim()) {
-      setError("Please complete the company and Founder name.");
+    if (!form.founder_name.trim()) {
+      setError("Please complete the Founder name.");
       setSaving(false);
       return;
     }
@@ -261,7 +260,10 @@ export default function SuccessfulHires() {
       candidate_id: candidate.id,
       candidate_name: candidate.full_name,
       offer_name: form.offer_name,
-      company_name: form.company_name.trim(),
+
+      // Keep the existing database company_name requirement.
+      company_name: form.offer_name,
+
       job_title: form.job_title.trim() || null,
 
       recruiter_id: recruiter.member_id,
@@ -331,6 +333,7 @@ export default function SuccessfulHires() {
         "Hire saved, but commissions could not be created: " +
           commissionError.message
       );
+
       await loadPage();
       setSaving(false);
       return;
@@ -352,7 +355,7 @@ export default function SuccessfulHires() {
 
   async function deleteHire(hire) {
     const confirmed = window.confirm(
-      `Are you sure you want to delete the successful hire for ${hire.candidate_name} at ${hire.company_name}?\n\nAll commissions linked to this hire will also be deleted.`
+      `Are you sure you want to delete the successful hire for ${hire.candidate_name} at ${hire.offer_name || hire.company_name}?\n\nAll commissions linked to this hire will also be deleted.`
     );
 
     if (!confirmed) return;
@@ -444,6 +447,7 @@ export default function SuccessfulHires() {
             }
           >
             <option value="">Select Candidate</option>
+
             {candidates.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.full_name}
@@ -459,6 +463,7 @@ export default function SuccessfulHires() {
             onChange={(e) => selectOffer(e.target.value)}
           >
             <option value="">Select Offer</option>
+
             {offers.map((offer) => (
               <option key={offer.id} value={offer.offer_name}>
                 {offer.offer_name}
@@ -471,17 +476,6 @@ export default function SuccessfulHires() {
               No offers found. Add offers first in Commission Structure.
             </p>
           )}
-
-          <label>Company Name</label>
-          <input
-            required
-            style={inputStyle}
-            value={form.company_name}
-            onChange={(e) =>
-              updateForm("company_name", e.target.value)
-            }
-            placeholder="Company name"
-          />
 
           <label>Job Title</label>
           <input
@@ -527,6 +521,7 @@ export default function SuccessfulHires() {
               }}
             >
               <option value="">Select Recruiter</option>
+
               {recruiters.map((recruiter) => (
                 <option
                   key={recruiter.member_id}
@@ -572,6 +567,7 @@ export default function SuccessfulHires() {
               }}
             >
               <option value="">No Team Leader</option>
+
               {teamLeaders.map((leader) => (
                 <option
                   key={leader.member_id}
@@ -647,8 +643,7 @@ export default function SuccessfulHires() {
               <thead>
                 <tr>
                   <th>Candidate</th>
-                  <th>Offer</th>
-                  <th>Company</th>
+                  <th>Offer Name</th>
                   <th>Recruiter</th>
                   <th>Team Leader</th>
                   <th>Founder Commission</th>
@@ -661,8 +656,7 @@ export default function SuccessfulHires() {
                 {hires.map((hire) => (
                   <tr key={hire.id}>
                     <td>{hire.candidate_name}</td>
-                    <td>{hire.offer_name || "—"}</td>
-                    <td>{hire.company_name}</td>
+                    <td>{hire.offer_name || hire.company_name || "—"}</td>
                     <td>{hire.recruiter_name}</td>
                     <td>{hire.team_leader_name || "—"}</td>
                     <td>{hire.founder_commission} EGP</td>
