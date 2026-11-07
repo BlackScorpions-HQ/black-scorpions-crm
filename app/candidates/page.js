@@ -8,6 +8,7 @@ export default function CandidatesPage() {
   const [supabase] = useState(() => createClient());
 
   const [candidates, setCandidates] = useState([]);
+  const [offers, setOffers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -15,14 +16,17 @@ export default function CandidatesPage() {
   const [role, setRole] = useState("");
   const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
+  const initialForm = {
     full_name: "",
     phone: "",
     english_level: "B1",
     location: "",
     graduation_status: "Graduate",
-    work_type: "WFS"
-  });
+    work_type: "WFS",
+    offer_name: ""
+  };
+
+  const [form, setForm] = useState(initialForm);
 
   async function initialize() {
     setLoading(true);
@@ -47,7 +51,11 @@ export default function CandidatesPage() {
     }
 
     setRole(userRole || "");
-    await loadCandidates();
+
+    await Promise.all([
+      loadCandidates(),
+      loadOffers()
+    ]);
   }
 
   async function loadCandidates() {
@@ -57,12 +65,34 @@ export default function CandidatesPage() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMessage("Error: " + error.message);
+      setMessage("Candidates Error: " + error.message);
     } else {
       setCandidates(data || []);
     }
 
     setLoading(false);
+  }
+
+  async function loadOffers() {
+    const { data, error } = await supabase
+      .from("job_offers")
+      .select("title")
+      .order("title", { ascending: true });
+
+    if (error) {
+      setMessage("Offers Error: " + error.message);
+      return;
+    }
+
+    const uniqueOffers = [
+      ...new Set(
+        (data || [])
+          .map(offer => offer.title)
+          .filter(Boolean)
+      )
+    ];
+
+    setOffers(uniqueOffers);
   }
 
   useEffect(() => {
@@ -102,16 +132,7 @@ export default function CandidatesPage() {
       setMessage("Error: " + error.message);
     } else {
       setMessage("Candidate added successfully!");
-
-      setForm({
-        full_name: "",
-        phone: "",
-        english_level: "B1",
-        location: "",
-        graduation_status: "Graduate",
-        work_type: "WFS"
-      });
-
+      setForm({ ...initialForm });
       await loadCandidates();
     }
 
@@ -152,7 +173,7 @@ export default function CandidatesPage() {
   }
 
   const filtered = candidates.filter(candidate =>
-    `${candidate.full_name} ${candidate.phone} ${candidate.recruiter_name || ""}`
+    `${candidate.full_name} ${candidate.phone} ${candidate.recruiter_name || ""} ${candidate.offer_name || ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -327,6 +348,37 @@ export default function CandidatesPage() {
               placeholder="Phone number"
             />
 
+            <label style={labelStyle}>Offer Name</label>
+            <select
+              style={inputStyle}
+              required
+              value={form.offer_name}
+              onChange={e => setForm({
+                ...form, offer_name: e.target.value
+              })}
+            >
+              <option value="">
+                Select an offer
+              </option>
+
+              {offers.map(offer => (
+                <option key={offer} value={offer}>
+                  {offer}
+                </option>
+              ))}
+            </select>
+
+            {offers.length === 0 && (
+              <p style={{
+                color: "#999",
+                fontSize: "12px",
+                marginTop: "-10px",
+                marginBottom: "17px"
+              }}>
+                No offers found. Add offers in Job Offers first.
+              </p>
+            )}
+
             <label style={labelStyle}>English Level</label>
             <select
               style={inputStyle}
@@ -379,10 +431,10 @@ export default function CandidatesPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || offers.length === 0}
               style={{
                 ...buttonStyle,
-                opacity: saving ? 0.6 : 1
+                opacity: saving || offers.length === 0 ? 0.6 : 1
               }}
             >
               {saving ? "SAVING..." : "🦂 ADD CANDIDATE"}
@@ -402,7 +454,7 @@ export default function CandidatesPage() {
             style={inputStyle}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, phone or recruiter..."
+            placeholder="Search by name, phone, offer or recruiter..."
           />
 
           {loading ? (
@@ -436,6 +488,7 @@ export default function CandidatesPage() {
                   fontSize: "14px"
                 }}>
                   <p><b style={{color:"#d4af37"}}>Phone:</b> {candidate.phone}</p>
+                  <p><b style={{color:"#d4af37"}}>Offer Name:</b> {candidate.offer_name || "Not selected"}</p>
                   <p><b style={{color:"#d4af37"}}>English:</b> {candidate.english_level}</p>
                   <p><b style={{color:"#d4af37"}}>Location:</b> {candidate.location}</p>
                   <p><b style={{color:"#d4af37"}}>Graduation:</b> {candidate.graduation_status}</p>
