@@ -12,45 +12,67 @@ function ScorpionMark({ size = 50 }) {
       viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Black Scorpions logo"
+      aria-label="Black Scorpions emblem"
     >
       <defs>
         <linearGradient id="scorpionGold" x1="15" y1="10" x2="85" y2="90">
-          <stop offset="0%" stopColor="#fff0a6" />
-          <stop offset="45%" stopColor="#d4af37" />
-          <stop offset="100%" stopColor="#9b6b13" />
+          <stop offset="0%" stopColor="#FFF2B0" />
+          <stop offset="45%" stopColor="#E4BD4F" />
+          <stop offset="100%" stopColor="#A87516" />
         </linearGradient>
       </defs>
 
       <g
         stroke="url(#scorpionGold)"
-        strokeWidth="5"
+        strokeWidth="3.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* Tail */}
-        <path d="M50 43 C43 32 54 27 61 19 C69 10 57 5 50 12" />
-        <path d="M50 12 C42 8 43 20 51 19" />
+        {/* Scorpion curved tail */}
+        <path d="M50 43 C43 34 48 28 57 22 C67 15 66 7 56 7" />
+        <path d="M56 7 C48 4 43 10 47 15" />
+        <path d="M48 18 L59 20" />
+        <path d="M44 26 L58 29" />
+        <path d="M43 34 L55 37" />
+        <path d="M56 7 C66 1 73 7 66 15" strokeWidth="3" />
 
         {/* Body */}
-        <ellipse cx="50" cy="54" rx="11" ry="19" fill="#b58b24" />
-        <path d="M43 45 L57 45 M41 53 L59 53 M43 61 L57 61" />
+        <path
+          d="M42 43 Q50 37 58 43 L61 59 Q59 69 50 73 Q41 69 39 59 Z"
+          fill="#A87516"
+          fillOpacity="0.3"
+        />
+        <path d="M42 48 Q50 53 58 48" />
+        <path d="M40 56 Q50 61 60 56" />
+        <path d="M42 64 Q50 68 58 64" />
 
-        {/* Left claw */}
-        <path d="M42 52 C31 44 22 48 18 59 C15 68 24 75 32 68" />
-        <path d="M32 68 C26 61 29 56 35 55" />
+        {/* Left pincers */}
+        <path d="M41 47 C32 39 22 40 17 49 C12 58 19 67 29 64" />
+        <path d="M29 64 C22 59 24 52 32 51" />
+        <path d="M32 51 L39 56" />
 
-        {/* Right claw */}
-        <path d="M58 52 C69 44 78 48 82 59 C85 68 76 75 68 68" />
-        <path d="M68 68 C74 61 71 56 65 55" />
+        {/* Right pincers */}
+        <path d="M59 47 C68 39 78 40 83 49 C88 58 81 67 71 64" />
+        <path d="M71 64 C78 59 76 52 68 51" />
+        <path d="M68 51 L61 56" />
 
-        {/* Legs */}
-        <path d="M42 45 L30 38 L24 42" />
-        <path d="M40 53 L27 51 L22 57" />
-        <path d="M42 62 L31 68 L28 76" />
-        <path d="M58 45 L70 38 L76 42" />
-        <path d="M60 53 L73 51 L78 57" />
-        <path d="M58 62 L69 68 L72 76" />
+        {/* Left legs */}
+        <path d="M43 45 L33 37 L25 39 L20 34" />
+        <path d="M40 51 L28 48 L21 52 L16 48" />
+        <path d="M40 59 L29 61 L24 68 L18 68" />
+        <path d="M44 67 L37 74 L35 81 L29 83" />
+
+        {/* Right legs */}
+        <path d="M57 45 L67 37 L75 39 L80 34" />
+        <path d="M60 51 L72 48 L79 52 L84 48" />
+        <path d="M60 59 L71 61 L76 68 L82 68" />
+        <path d="M56 67 L63 74 L65 81 L71 83" />
+
+        {/* Head */}
+        <path d="M45 42 L43 37" />
+        <path d="M55 42 L57 37" />
+        <circle cx="46" cy="43" r="1.5" fill="#FFF2B0" stroke="none" />
+        <circle cx="54" cy="43" r="1.5" fill="#FFF2B0" stroke="none" />
       </g>
     </svg>
   );
@@ -94,18 +116,21 @@ export default function LoginPage() {
       <div style={styles.smokeTwo} />
 
       <div className="login-card" style={styles.card}>
+        {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLogo}>
             <ScorpionMark size={39} />
           </div>
+
           <span style={styles.headerName}>Black Scorpions</span>
         </div>
 
         <div style={styles.topLine} />
 
+        {/* Main logo */}
         <div style={styles.logo}>
           <div style={styles.logoCircle}>
-            <ScorpionMark size={67} />
+            <ScorpionMark size={78} />
           </div>
 
           <h1 style={styles.heading}>BLACK SCORPIONS</h1>
@@ -115,16 +140,19 @@ export default function LoginPage() {
           <p style={styles.subtitle}>RECRUITMENT CRM</p>
         </div>
 
+        {/* Welcome */}
         <div style={styles.welcome}>
           <h2>WELCOME BACK</h2>
           <p>Sign in to access your headquarters</p>
         </div>
 
+        {/* Login form */}
         <form onSubmit={handleLogin}>
           <label style={styles.label}>EMAIL ADDRESS</label>
 
           <div style={styles.inputWrapper}>
             <span style={styles.inputIcon}>✉</span>
+
             <input
               type="email"
               placeholder="Enter your email"
@@ -140,6 +168,7 @@ export default function LoginPage() {
 
           <div style={styles.inputWrapper}>
             <span style={styles.inputIcon}>♙</span>
+
             <input
               type="password"
               placeholder="Enter your password"
@@ -166,6 +195,7 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Signup */}
         <div style={styles.separator}>
           <span />
           <p>NEW RECRUITER?</p>
@@ -176,6 +206,7 @@ export default function LoginPage() {
           CREATE ACCOUNT
         </a>
 
+        {/* Footer */}
         <div style={styles.footer}>
           <p>BLACK SCORPIONS © 2026</p>
           <span>POWER • DISCIPLINE • SUCCESS</span>
@@ -189,8 +220,8 @@ export default function LoginPage() {
 
         input:focus {
           outline: none;
-          border-color: #d4af37 !important;
-          box-shadow: 0 0 15px rgba(212, 175, 55, 0.12);
+          border-color: #e4bd4f !important;
+          box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
         }
 
         button:hover {
@@ -204,7 +235,14 @@ export default function LoginPage() {
 
         @media (max-width: 480px) {
           .login-card {
-            padding: 25px 20px !important;
+            padding: 24px 20px !important;
+            border-radius: 20px !important;
+          }
+        }
+
+        @media (max-height: 850px) {
+          .login-card {
+            margin: 10px 0;
           }
         }
       `}</style>
@@ -221,7 +259,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "25px 16px",
+    padding: "24px 16px",
     fontFamily: "Arial, sans-serif",
     position: "relative",
     overflow: "hidden",
@@ -275,7 +313,7 @@ const styles = {
     gap: "13px",
     paddingBottom: "22px",
     borderBottom: "1px solid rgba(212,175,55,0.2)",
-    marginBottom: "25px",
+    marginBottom: "23px",
   },
 
   headerLogo: {
@@ -302,12 +340,12 @@ const styles = {
     height: "3px",
     width: "75px",
     background: "linear-gradient(90deg, transparent, #d4af37, transparent)",
-    margin: "0 auto 25px",
+    margin: "0 auto 22px",
   },
 
   logo: {
     textAlign: "center",
-    marginBottom: "35px",
+    marginBottom: "28px",
   },
 
   logoCircle: {
@@ -318,7 +356,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 22px",
+    margin: "0 auto 18px",
     background: "radial-gradient(circle, #292316, #090909 75%)",
     boxShadow:
       "0 0 25px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.08)",
@@ -336,7 +374,7 @@ const styles = {
     width: "100px",
     height: "2px",
     background: "linear-gradient(90deg, transparent, #d4af37, transparent)",
-    margin: "16px auto",
+    margin: "14px auto",
   },
 
   subtitle: {
@@ -348,7 +386,7 @@ const styles = {
 
   welcome: {
     textAlign: "center",
-    marginBottom: "30px",
+    marginBottom: "28px",
   },
 
   label: {
@@ -362,7 +400,7 @@ const styles = {
 
   inputWrapper: {
     position: "relative",
-    marginBottom: "24px",
+    marginBottom: "22px",
   },
 
   inputIcon: {
@@ -414,7 +452,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    margin: "28px 0 20px",
+    margin: "25px 0 18px",
   },
 
   signupButton: {
@@ -434,8 +472,8 @@ const styles = {
 
   footer: {
     borderTop: "1px solid #292929",
-    marginTop: "30px",
-    paddingTop: "20px",
+    marginTop: "26px",
+    paddingTop: "18px",
     textAlign: "center",
     color: "#777",
     fontSize: "10px",
