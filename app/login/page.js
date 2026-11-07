@@ -4,6 +4,58 @@
 import { useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 
+function ScorpionMark({ size = 50 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="Black Scorpions logo"
+    >
+      <defs>
+        <linearGradient id="scorpionGold" x1="15" y1="10" x2="85" y2="90">
+          <stop offset="0%" stopColor="#fff0a6" />
+          <stop offset="45%" stopColor="#d4af37" />
+          <stop offset="100%" stopColor="#9b6b13" />
+        </linearGradient>
+      </defs>
+
+      <g
+        stroke="url(#scorpionGold)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* Tail */}
+        <path d="M50 43 C43 32 54 27 61 19 C69 10 57 5 50 12" />
+        <path d="M50 12 C42 8 43 20 51 19" />
+
+        {/* Body */}
+        <ellipse cx="50" cy="54" rx="11" ry="19" fill="#b58b24" />
+        <path d="M43 45 L57 45 M41 53 L59 53 M43 61 L57 61" />
+
+        {/* Left claw */}
+        <path d="M42 52 C31 44 22 48 18 59 C15 68 24 75 32 68" />
+        <path d="M32 68 C26 61 29 56 35 55" />
+
+        {/* Right claw */}
+        <path d="M58 52 C69 44 78 48 82 59 C85 68 76 75 68 68" />
+        <path d="M68 68 C74 61 71 56 65 55" />
+
+        {/* Legs */}
+        <path d="M42 45 L30 38 L24 42" />
+        <path d="M40 53 L27 51 L22 57" />
+        <path d="M42 62 L31 68 L28 76" />
+        <path d="M58 45 L70 38 L76 42" />
+        <path d="M60 53 L73 51 L78 57" />
+        <path d="M58 62 L69 68 L72 76" />
+      </g>
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,16 +90,28 @@ export default function LoginPage() {
 
   return (
     <main style={styles.page}>
-      <div style={styles.smokeOne}></div>
-      <div style={styles.smokeTwo}></div>
+      <div style={styles.smokeOne} />
+      <div style={styles.smokeTwo} />
 
-      <div style={styles.card}>
-        <div style={styles.topLine}></div>
+      <div className="login-card" style={styles.card}>
+        <div style={styles.header}>
+          <div style={styles.headerLogo}>
+            <ScorpionMark size={39} />
+          </div>
+          <span style={styles.headerName}>Black Scorpions</span>
+        </div>
+
+        <div style={styles.topLine} />
 
         <div style={styles.logo}>
-          <div style={styles.logoCircle}>🦂</div>
+          <div style={styles.logoCircle}>
+            <ScorpionMark size={67} />
+          </div>
+
           <h1 style={styles.heading}>BLACK SCORPIONS</h1>
-          <div style={styles.goldLine}></div>
+
+          <div style={styles.goldLine} />
+
           <p style={styles.subtitle}>RECRUITMENT CRM</p>
         </div>
 
@@ -58,30 +122,36 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <label style={styles.label}>EMAIL ADDRESS</label>
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={styles.input}
-          />
+
+          <div style={styles.inputWrapper}>
+            <span style={styles.inputIcon}>✉</span>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              style={styles.input}
+            />
+          </div>
 
           <label style={styles.label}>PASSWORD</label>
-          <input
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={styles.input}
-          />
 
-          {error && (
-            <div style={styles.error}>
-              {error}
-            </div>
-          )}
+          <div style={styles.inputWrapper}>
+            <span style={styles.inputIcon}>♙</span>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              style={styles.input}
+            />
+          </div>
+
+          {error && <div style={styles.error}>{error}</div>}
 
           <button
             type="submit"
@@ -89,6 +159,7 @@ export default function LoginPage() {
             style={{
               ...styles.loginButton,
               opacity: loading ? 0.7 : 1,
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
             {loading ? "AUTHENTICATING..." : "LOGIN TO HEADQUARTERS"}
@@ -96,9 +167,9 @@ export default function LoginPage() {
         </form>
 
         <div style={styles.separator}>
-          <span></span>
+          <span />
           <p>NEW RECRUITER?</p>
-          <span></span>
+          <span />
         </div>
 
         <a href="/signup" style={styles.signupButton}>
@@ -119,7 +190,7 @@ export default function LoginPage() {
         input:focus {
           outline: none;
           border-color: #d4af37 !important;
-          box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
+          box-shadow: 0 0 15px rgba(212, 175, 55, 0.12);
         }
 
         button:hover {
@@ -150,7 +221,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "30px 16px",
+    padding: "25px 16px",
     fontFamily: "Arial, sans-serif",
     position: "relative",
     overflow: "hidden",
@@ -162,7 +233,7 @@ const styles = {
     height: "600px",
     borderRadius: "50%",
     background:
-      "radial-gradient(circle, rgba(212,175,55,0.09), transparent 70%)",
+      "radial-gradient(circle, rgba(212,175,55,0.12), transparent 70%)",
     top: "-200px",
     left: "-200px",
     filter: "blur(50px)",
@@ -184,47 +255,78 @@ const styles = {
 
   card: {
     width: "100%",
-    maxWidth: "440px",
+    maxWidth: "460px",
     background:
-      "linear-gradient(145deg, rgba(28,28,28,0.97), rgba(9,9,9,0.98))",
-    border: "1px solid rgba(212,175,55,0.65)",
-    borderRadius: "18px",
-    padding: "38px 32px",
+      "linear-gradient(145deg, rgba(25,24,21,0.98), rgba(5,5,5,0.99))",
+    border: "1px solid rgba(212,175,55,0.75)",
+    borderRadius: "24px",
+    padding: "30px 32px",
     boxShadow:
-      "0 0 35px rgba(212,175,55,0.10), 0 25px 80px rgba(0,0,0,0.8)",
+      "0 0 45px rgba(212,175,55,0.13), 0 25px 80px rgba(0,0,0,0.8)",
     position: "relative",
     zIndex: 1,
+    overflow: "hidden",
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "13px",
+    paddingBottom: "22px",
+    borderBottom: "1px solid rgba(212,175,55,0.2)",
+    marginBottom: "25px",
+  },
+
+  headerLogo: {
+    width: "54px",
+    height: "54px",
+    minWidth: "54px",
+    borderRadius: "50%",
+    background: "#090909",
+    border: "1px solid #d4af37",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 0 18px rgba(212,175,55,0.2)",
+  },
+
+  headerName: {
+    color: "#e6c66b",
+    fontSize: "clamp(19px, 5vw, 27px)",
+    letterSpacing: "1px",
+    fontWeight: "500",
   },
 
   topLine: {
     height: "3px",
     width: "75px",
     background: "linear-gradient(90deg, transparent, #d4af37, transparent)",
-    margin: "0 auto 28px",
+    margin: "0 auto 25px",
   },
 
   logo: {
     textAlign: "center",
-    marginBottom: "38px",
+    marginBottom: "35px",
   },
 
   logoCircle: {
-    width: "76px",
-    height: "76px",
-    border: "1px solid #d4af37",
+    width: "116px",
+    height: "116px",
+    border: "2px solid #d4af37",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 17px",
-    fontSize: "38px",
-    background: "linear-gradient(145deg, #292316, #090909)",
-    boxShadow: "0 0 25px rgba(212,175,55,0.16)",
+    margin: "0 auto 22px",
+    background: "radial-gradient(circle, #292316, #090909 75%)",
+    boxShadow:
+      "0 0 25px rgba(212,175,55,0.2), inset 0 0 20px rgba(212,175,55,0.08)",
   },
 
   heading: {
-    color: "#d4af37",
-    fontSize: "25px",
+    color: "#e6c66b",
+    fontSize: "clamp(22px, 5vw, 27px)",
     fontWeight: "900",
     letterSpacing: "2px",
     margin: 0,
@@ -232,15 +334,15 @@ const styles = {
 
   goldLine: {
     width: "100px",
-    height: "1px",
-    background: "#d4af37",
-    margin: "15px auto",
+    height: "2px",
+    background: "linear-gradient(90deg, transparent, #d4af37, transparent)",
+    margin: "16px auto",
   },
 
   subtitle: {
-    color: "#999",
+    color: "#aaa",
     fontSize: "11px",
-    letterSpacing: "4px",
+    letterSpacing: "5px",
     margin: 0,
   },
 
@@ -251,36 +353,49 @@ const styles = {
 
   label: {
     display: "block",
-    color: "#d4af37",
-    fontSize: "11px",
+    color: "#e0bd55",
+    fontSize: "12px",
     fontWeight: "bold",
-    letterSpacing: "1.5px",
-    marginBottom: "9px",
+    letterSpacing: "2px",
+    marginBottom: "10px",
+  },
+
+  inputWrapper: {
+    position: "relative",
+    marginBottom: "24px",
+  },
+
+  inputIcon: {
+    position: "absolute",
+    left: "17px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "#d4af37",
+    fontSize: "22px",
+    zIndex: 1,
   },
 
   input: {
     width: "100%",
-    padding: "15px",
-    marginBottom: "23px",
-    background: "#111",
+    padding: "17px 15px 17px 52px",
+    background: "rgba(12,12,12,0.95)",
     color: "#fff",
-    border: "1px solid #393939",
-    borderRadius: "8px",
+    border: "1px solid rgba(212,175,55,0.35)",
+    borderRadius: "10px",
     fontSize: "14px",
     transition: "0.2s",
   },
 
   loginButton: {
     width: "100%",
-    padding: "16px",
+    padding: "17px",
     background: "linear-gradient(135deg, #f0d477, #b58b24)",
     color: "#090909",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "9px",
     fontWeight: "900",
     fontSize: "13px",
     letterSpacing: "1px",
-    cursor: "pointer",
     marginTop: "5px",
     transition: "0.2s",
   },
@@ -299,7 +414,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    margin: "27px 0 20px",
+    margin: "28px 0 20px",
   },
 
   signupButton: {
@@ -308,7 +423,7 @@ const styles = {
     textAlign: "center",
     padding: "15px",
     border: "1px solid #d4af37",
-    borderRadius: "8px",
+    borderRadius: "9px",
     color: "#d4af37",
     textDecoration: "none",
     fontSize: "12px",
