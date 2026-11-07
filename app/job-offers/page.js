@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -73,10 +72,7 @@ function getLanguageLevel(value) {
     };
   }
 
-  const language = match[1]
-    .trim()
-    .replace(/\s+/g, " ");
-
+  const language = match[1].trim().replace(/\s+/g, " ");
   const levelName = match[2].toUpperCase();
   const plus = match[3] === "+";
 
@@ -120,7 +116,7 @@ export default function JobOffersPage() {
   const [message, setMessage] = useState("");
   const [job, setJob] = useState(emptyJob);
 
-  // Stores the ID of the offer currently being edited.
+  // EDIT OFFER STATE
   const [editingOfferId, setEditingOfferId] = useState(null);
 
   const isCEO = role === "CEO";
@@ -184,6 +180,7 @@ export default function JobOffersPage() {
     }));
   }
 
+  // START EDITING AN EXISTING OFFER
   function startEditing(offer) {
     if (!isCEO) return;
 
@@ -192,7 +189,7 @@ export default function JobOffersPage() {
     setJob({
       title: offer.title || "",
       company_name: offer.company_name || "",
-      maximum_age: offer.maximum_age?.toString() || "",
+      maximum_age: offer.maximum_age ?? "",
       required_language: offer.required_language || "",
       location: offer.location || "",
       job_description: offer.job_description || "",
@@ -203,8 +200,7 @@ export default function JobOffersPage() {
       status: offer.status || "Active",
     });
 
-    setMessage("Editing offer: " + (offer.title || ""));
-    setResults(null);
+    setMessage("You are now editing: " + offer.title);
 
     window.scrollTo({
       top: 0,
@@ -212,6 +208,7 @@ export default function JobOffersPage() {
     });
   }
 
+  // CANCEL EDITING
   function cancelEditing() {
     setEditingOfferId(null);
     setJob({ ...emptyJob });
@@ -234,9 +231,15 @@ export default function JobOffersPage() {
     }
   }
 
+  // ADD NEW OFFER OR UPDATE EXISTING OFFER
   async function addJob(event) {
     event.preventDefault();
     setMessage("");
+
+    if (!isCEO) {
+      setMessage("Only CEO can manage job offers.");
+      return;
+    }
 
     if (
       !job.title.trim() ||
@@ -254,7 +257,7 @@ export default function JobOffersPage() {
       !Number.isFinite(Number(job.maximum_age)) ||
       Number(job.maximum_age) < 18
     ) {
-      setMessage("Maximum age must be 18 or above.");
+      setMessage("Maximum age cannot be below 18.");
       return;
     }
 
@@ -278,6 +281,7 @@ export default function JobOffersPage() {
     let error;
 
     if (isEditing) {
+      // UPDATE THE EXISTING OFFER
       const response = await supabase
         .from("job_offers")
         .update(jobData)
@@ -285,6 +289,7 @@ export default function JobOffersPage() {
 
       error = response.error;
     } else {
+      // INSERT A NEW OFFER
       const response = await supabase
         .from("job_offers")
         .insert(jobData);
@@ -294,8 +299,9 @@ export default function JobOffersPage() {
 
     if (error) {
       setMessage(
-        (isEditing ? "Offer update failed: " : "Offer creation failed: ") +
-        error.message
+        isEditing
+          ? "Offer update failed: " + error.message
+          : "Offer publishing failed: " + error.message
       );
     } else {
       setMessage(
@@ -581,14 +587,45 @@ export default function JobOffersPage() {
             fontSize: "13px",
           }}
         >
-          <p><b style={{ color: "#d4af37" }}>Company:</b> {offer.company_name || "Not specified"}</p>
-          <p><b style={{ color: "#d4af37" }}>Location:</b> {offer.location}</p>
-          <p><b style={{ color: "#d4af37" }}>Language:</b> {offer.required_language}</p>
-          <p><b style={{ color: "#d4af37" }}>Maximum Age:</b> {offer.maximum_age}</p>
-          <p><b style={{ color: "#d4af37" }}>Job Type:</b> {offer.job_type || "Any"}</p>
-          <p><b style={{ color: "#d4af37" }}>Graduation:</b> {offer.graduation_status || "Any"}</p>
-          <p><b style={{ color: "#d4af37" }}>Experience:</b> {offer.experience || "Any"}</p>
-          <p><b style={{ color: "#d4af37" }}>Nationality:</b> {offer.nationality || "Both"}</p>
+          <p>
+            <b style={{ color: "#d4af37" }}>Company:</b>{" "}
+            {offer.company_name || "Not specified"}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Location:</b>{" "}
+            {offer.location}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Language:</b>{" "}
+            {offer.required_language}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Maximum Age:</b>{" "}
+            {offer.maximum_age}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Job Type:</b>{" "}
+            {offer.job_type || "Any"}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Graduation:</b>{" "}
+            {offer.graduation_status || "Any"}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Experience:</b>{" "}
+            {offer.experience || "Any"}
+          </p>
+
+          <p>
+            <b style={{ color: "#d4af37" }}>Nationality:</b>{" "}
+            {offer.nationality || "Both"}
+          </p>
         </div>
 
         <div
@@ -608,6 +645,7 @@ export default function JobOffersPage() {
           {offer.job_description}
         </div>
 
+        {/* COPY OFFER */}
         <button
           type="button"
           onClick={() => copyOffer(offer)}
@@ -619,48 +657,48 @@ export default function JobOffersPage() {
           📋 Copy Offer
         </button>
 
+        {/* EDIT OFFER - CEO ONLY */}
         {isCEO && (
-          <>
-            <button
-              type="button"
-              onClick={() => startEditing(offer)}
-              style={{
-                ...buttonStyle,
-                marginTop: "10px",
-                background: "linear-gradient(135deg, #393939, #171717)",
-                color: "#f0d477",
-                border: "1px solid #b58b24",
-              }}
-            >
-              ✏️ EDIT OFFER
-            </button>
+          <button
+            type="button"
+            onClick={() => startEditing(offer)}
+            style={{
+              ...buttonStyle,
+              marginTop: "10px",
+              background: "linear-gradient(135deg, #f0d477, #b58b24)",
+            }}
+          >
+            ✏️ EDIT OFFER
+          </button>
+        )}
 
-            <button
-              type="button"
-              disabled={changingStatus === offer.id}
-              onClick={() =>
-                changeJobStatus(
-                  offer.id,
-                  isActive ? "Hold" : "Active"
-                )
-              }
-              style={{
-                ...buttonStyle,
-                background: isActive
-                  ? "linear-gradient(135deg, #9d3434, #651d1d)"
-                  : "linear-gradient(135deg, #238b4e, #14562e)",
-                color: "#fff",
-                marginTop: "10px",
-                opacity: changingStatus === offer.id ? 0.6 : 1,
-              }}
-            >
-              {changingStatus === offer.id
-                ? "Updating..."
-                : isActive
-                  ? "PUT ON HOLD"
-                  : "ACTIVATE JOB"}
-            </button>
-          </>
+        {/* CHANGE STATUS - CEO ONLY */}
+        {isCEO && (
+          <button
+            type="button"
+            disabled={changingStatus === offer.id}
+            onClick={() =>
+              changeJobStatus(
+                offer.id,
+                isActive ? "Hold" : "Active"
+              )
+            }
+            style={{
+              ...buttonStyle,
+              background: isActive
+                ? "linear-gradient(135deg, #9d3434, #651d1d)"
+                : "linear-gradient(135deg, #238b4e, #14562e)",
+              color: "#fff",
+              marginTop: "10px",
+              opacity: changingStatus === offer.id ? 0.6 : 1,
+            }}
+          >
+            {changingStatus === offer.id
+              ? "Updating..."
+              : isActive
+                ? "PUT ON HOLD"
+                : "ACTIVATE JOB"}
+          </button>
         )}
       </div>
     );
@@ -861,8 +899,12 @@ export default function JobOffersPage() {
                 disabled={saving}
               >
                 {saving
-                  ? isEditing ? "UPDATING..." : "PUBLISHING..."
-                  : isEditing ? "SAVE CHANGES" : "PUBLISH JOB OFFER"}
+                  ? isEditing
+                    ? "SAVING CHANGES..."
+                    : "PUBLISHING..."
+                  : isEditing
+                    ? "SAVE CHANGES"
+                    : "PUBLISH JOB OFFER"}
               </button>
 
               {isEditing && (
@@ -939,7 +981,7 @@ export default function JobOffersPage() {
               ["Egyptian", "Foreigner"]
             )}
 
-            <button style={buttonStyle}>
+            <button type="submit" style={buttonStyle}>
               FIND MATCHING JOBS
             </button>
           </form>
