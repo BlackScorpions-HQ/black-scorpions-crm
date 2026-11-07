@@ -43,8 +43,6 @@ const emptyJob = {
   status: "Active",
 };
 
-// Normalize language names and levels.
-// Supports: French C1, French (C1), French - C1, English B2+.
 function getLanguageLevel(value) {
   const normalized = (value || "")
     .trim()
@@ -88,24 +86,20 @@ function getLanguageLevel(value) {
   };
 }
 
-// Candidate language must meet or exceed the offer requirement.
 function languageMatches(candidateLanguage, requiredLanguage) {
   const candidate = getLanguageLevel(candidateLanguage);
   const required = getLanguageLevel(requiredLanguage);
 
   if (!candidate || !required) return false;
 
-  // Different languages never match.
   if (candidate.language !== required.language) {
     return false;
   }
 
-  // If the offer has no specified level, any level of that language matches.
   if (required.level === null) {
     return true;
   }
 
-  // If the candidate has no level, they cannot meet a specific requirement.
   if (candidate.level === null) {
     return false;
   }
@@ -115,6 +109,7 @@ function languageMatches(candidateLanguage, requiredLanguage) {
 
 export default function JobOffersPage() {
   const [supabase] = useState(() => createClient());
+
   const [role, setRole] = useState("");
   const [offers, setOffers] = useState([]);
   const [search, setSearch] = useState(emptySearch);
@@ -125,7 +120,11 @@ export default function JobOffersPage() {
   const [message, setMessage] = useState("");
   const [job, setJob] = useState(emptyJob);
 
+  // Stores the ID of the offer currently being edited.
+  const [editingOfferId, setEditingOfferId] = useState(null);
+
   const isCEO = role === "CEO";
+  const isEditing = editingOfferId !== null;
 
   async function loadOffers() {
     setLoading(true);
@@ -185,6 +184,40 @@ export default function JobOffersPage() {
     }));
   }
 
+  function startEditing(offer) {
+    if (!isCEO) return;
+
+    setEditingOfferId(offer.id);
+
+    setJob({
+      title: offer.title || "",
+      company_name: offer.company_name || "",
+      maximum_age: offer.maximum_age?.toString() || "",
+      required_language: offer.required_language || "",
+      location: offer.location || "",
+      job_description: offer.job_description || "",
+      job_type: offer.job_type || "",
+      graduation_status: offer.graduation_status || "",
+      experience: offer.experience || "",
+      nationality: offer.nationality || "Both",
+      status: offer.status || "Active",
+    });
+
+    setMessage("Editing offer: " + (offer.title || ""));
+    setResults(null);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function cancelEditing() {
+    setEditingOfferId(null);
+    setJob({ ...emptyJob });
+    setMessage("Editing cancelled.");
+  }
+
   async function copyOffer(offer) {
     try {
       const description = offer.job_description || "";
@@ -217,35 +250,64 @@ export default function JobOffersPage() {
       return;
     }
 
-    if (Number(job.maximum_age) < 18) {
-      setMessage("Maximum age cannot be below 18.");
+    if (
+      !Number.isFinite(Number(job.maximum_age)) ||
+      Number(job.maximum_age) < 18
+    ) {
+      setMessage("Maximum age must be 18 or above.");
       return;
     }
 
     setSaving(true);
 
-    const { error } = await supabase
-      .from("job_offers")
-      .insert({
-        title: job.title.trim(),
-        company: "Black Scorpions",
-        company_name: job.company_name.trim(),
-        maximum_age: Number(job.maximum_age),
-        required_language: job.required_language.trim(),
-        location: job.location.trim(),
-        job_description: job.job_description.trim(),
-        job_type: job.job_type || null,
-        graduation_status: job.graduation_status || null,
-        experience: job.experience || null,
-        nationality: job.nationality || "Both",
-        status: job.status,
-      });
+    const jobData = {
+      title: job.title.trim(),
+      company: "Black Scorpions",
+      company_name: job.company_name.trim(),
+      maximum_age: Number(job.maximum_age),
+      required_language: job.required_language.trim(),
+      location: job.location.trim(),
+      job_description: job.job_description.trim(),
+      job_type: job.job_type || null,
+      graduation_status: job.graduation_status || null,
+      experience: job.experience || null,
+      nationality: job.nationality || "Both",
+      status: job.status,
+    };
+
+    let error;
+
+    if (isEditing) {
+      const response = await supabase
+        .from("job_offers")
+        .update(jobData)
+        .eq("id", editingOfferId);
+
+      error = response.error;
+    } else {
+      const response = await supabase
+        .from("job_offers")
+        .insert(jobData);
+
+      error = response.error;
+    }
 
     if (error) {
-      setMessage(error.message);
+      setMessage(
+        (isEditing ? "Offer update failed: " : "Offer creation failed: ") +
+        error.message
+      );
     } else {
-      setMessage("Job offer published successfully!");
+      setMessage(
+        isEditing
+          ? "Job offer updated successfully! ✅"
+          : "Job offer published successfully! ✅"
+      );
+
       setJob({ ...emptyJob });
+      setEditingOfferId(null);
+      setResults(null);
+
       await loadOffers();
     }
 
@@ -558,31 +620,47 @@ export default function JobOffersPage() {
         </button>
 
         {isCEO && (
-          <button
-            type="button"
-            disabled={changingStatus === offer.id}
-            onClick={() =>
-              changeJobStatus(
-                offer.id,
-                isActive ? "Hold" : "Active"
-              )
-            }
-            style={{
-              ...buttonStyle,
-              background: isActive
-                ? "linear-gradient(135deg, #9d3434, #651d1d)"
-                : "linear-gradient(135deg, #238b4e, #14562e)",
-              color: "#fff",
-              marginTop: "10px",
-              opacity: changingStatus === offer.id ? 0.6 : 1,
-            }}
-          >
-            {changingStatus === offer.id
-              ? "Updating..."
-              : isActive
-                ? "PUT ON HOLD"
-                : "ACTIVATE JOB"}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => startEditing(offer)}
+              style={{
+                ...buttonStyle,
+                marginTop: "10px",
+                background: "linear-gradient(135deg, #393939, #171717)",
+                color: "#f0d477",
+                border: "1px solid #b58b24",
+              }}
+            >
+              ✏️ EDIT OFFER
+            </button>
+
+            <button
+              type="button"
+              disabled={changingStatus === offer.id}
+              onClick={() =>
+                changeJobStatus(
+                  offer.id,
+                  isActive ? "Hold" : "Active"
+                )
+              }
+              style={{
+                ...buttonStyle,
+                background: isActive
+                  ? "linear-gradient(135deg, #9d3434, #651d1d)"
+                  : "linear-gradient(135deg, #238b4e, #14562e)",
+                color: "#fff",
+                marginTop: "10px",
+                opacity: changingStatus === offer.id ? 0.6 : 1,
+              }}
+            >
+              {changingStatus === offer.id
+                ? "Updating..."
+                : isActive
+                  ? "PUT ON HOLD"
+                  : "ACTIVATE JOB"}
+            </button>
+          </>
         )}
       </div>
     );
@@ -673,11 +751,13 @@ export default function JobOffersPage() {
         {isCEO && (
           <section style={sectionStyle}>
             <h2 style={sectionTitleStyle}>
-              + PUBLISH NEW JOB
+              {isEditing ? "✏️ EDIT JOB OFFER" : "+ PUBLISH NEW JOB"}
             </h2>
 
             <p style={sectionSubtitleStyle}>
-              Create and publish a new job offer
+              {isEditing
+                ? "Update the selected job offer"
+                : "Create and publish a new job offer"}
             </p>
 
             <form onSubmit={addJob}>
@@ -772,14 +852,34 @@ export default function JobOffersPage() {
               </label>
 
               <button
+                type="submit"
                 style={{
                   ...buttonStyle,
                   marginTop: "8px",
+                  opacity: saving ? 0.6 : 1,
                 }}
                 disabled={saving}
               >
-                {saving ? "PUBLISHING..." : "PUBLISH JOB OFFER"}
+                {saving
+                  ? isEditing ? "UPDATING..." : "PUBLISHING..."
+                  : isEditing ? "SAVE CHANGES" : "PUBLISH JOB OFFER"}
               </button>
+
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={saving}
+                  style={{
+                    ...buttonStyle,
+                    marginTop: "10px",
+                    background: "linear-gradient(135deg, #555, #292929)",
+                    color: "#fff",
+                  }}
+                >
+                  CANCEL EDITING
+                </button>
+              )}
             </form>
           </section>
         )}
