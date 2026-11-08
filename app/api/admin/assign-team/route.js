@@ -62,7 +62,7 @@ export async function POST(request) {
       }
     );
 
-    // CEO authorization
+    // VERIFY REQUESTER ROLE
     const { data: requester, error: requesterError } =
       await admin
         .from("user_roles")
@@ -77,9 +77,11 @@ export async function POST(request) {
       );
     }
 
-    if (requester.role !== "CEO") {
+    const allowedRoles = ["CEO", "Assistant"];
+
+    if (!allowedRoles.includes(requester.role)) {
       return NextResponse.json(
-        { error: "CEO access only" },
+        { error: "CEO or Assistant access only" },
         { status: 403 }
       );
     }
