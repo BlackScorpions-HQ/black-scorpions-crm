@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
 
-const UNIT_ROLE = "Unit manager";
+const UNIT_ROLE = "Unit Manager";
 
 export default function AccountManagement() {
   const [supabase] = useState(() => createClient());
