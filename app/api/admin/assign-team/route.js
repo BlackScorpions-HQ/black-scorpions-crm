@@ -62,6 +62,7 @@ export async function POST(request) {
       }
     );
 
+    // CEO authorization
     const { data: requester, error: requesterError } =
       await admin
         .from("user_roles")
@@ -69,70 +70,125 @@ export async function POST(request) {
         .eq("id", user.id)
         .maybeSingle();
 
-    if (requesterError) {
-      return NextResponse.json({
-        diagnostic: "ROLE_QUERY_ERROR",
-        error: requesterError.message,
-        code: requesterError.code,
-      }, { status: 500 });
-    }
-
-    if (!requester) {
-      return NextResponse.json({
-        diagnostic: "ROLE_NOT_FOUND",
-        message: "No user_roles row matches the authenticated account."
-      }, { status: 403 });
+    if (requesterError || !requester) {
+      return NextResponse.json(
+        { error: "Unable to verify account role" },
+        { status: 403 }
+      );
     }
 
     if (requester.role !== "CEO") {
-      return NextResponse.json({
-        diagnostic: "ROLE_MISMATCH",
-        actualRole: requester.role,
-        message: "Authenticated account does not have CEO role."
-      }, { status: 403 });
+      return NextResponse.json(
+        { error: "CEO access only" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
-    const recruiterId = body.recruiter_id;
-    const teamLeaderId = body.team_leader_id;
+    const action = body.action || "assign_recruiter";
 
-    if (
-      typeof recruiterId !== "string" ||
-      !recruiterId.trim()
-    ) {
-      return NextResponse.json(
-        { error: "Recruiter ID is required" },
-        { status: 400 }
-      );
-    }
+    // ==========================================
+    // 1. ASSIGN RECRUITER TO TEAM LEADER
+    // ==========================================
 
-    const { data: recruiter, error: recruiterError } =
-      await admin
-        .from("user_roles")
-        .select("id, role")
-        .eq("id", recruiterId)
-        .maybeSingle();
+    if (action === "assign_recruiter") {
+      const recruiterId = body.recruiter_id;
+      const teamLeaderId = body.team_leader_id;
 
-    if (recruiterError || !recruiter) {
-      return NextResponse.json(
-        { error: "Recruiter account not found" },
-        { status: 404 }
-      );
-    }
-
-    if (recruiter.role !== "Recruiter") {
-      return NextResponse.json(
-        { error: "Only Recruiter accounts can be reassigned" },
-        { status: 400 }
-      );
-    }
-
-    let newLeaderId = null;
-
-    if (teamLeaderId !== null && teamLeaderId !== "") {
-      if (typeof teamLeaderId !== "string") {
+      if (
+        typeof recruiterId !== "string" ||
+        !recruiterId.trim()
+      ) {
         return NextResponse.json(
-          { error: "Invalid Team Leader ID" },
+          { error: "Recruiter ID is required" },
+          { status: 400 }
+        );
+      }
+
+      const { data: recruiter, error: recruiterError } =
+        await admin
+          .from("user_roles")
+          .select("id, role")
+          .eq("id", recruiterId)
+          .maybeSingle();
+
+      if (recruiterError || !recruiter) {
+        return NextResponse.json(
+          { error: "Recruiter account not found" },
+          { status: 404 }
+        );
+      }
+
+      if (recruiter.role !== "Recruiter") {
+        return NextResponse.json(
+          { error: "Only Recruiter accounts can be reassigned" },
+          { status: 400 }
+        );
+      }
+
+      let newLeaderId = null;
+
+      if (teamLeaderId !== null && teamLeaderId !== "") {
+        if (typeof teamLeaderId !== "string") {
+          return NextResponse.json(
+            { error: "Invalid Team Leader ID" },
+            { status: 400 }
+          );
+        }
+
+        const { data: leader, error: leaderError } =
+          await admin
+            .from("user_roles")
+            .select("id, role")
+            .eq("id", teamLeaderId)
+            .maybeSingle();
+
+        if (
+          leaderError ||
+          !leader ||
+          leader.role !== "Team Leader"
+        ) {
+          return NextResponse.json(
+            { error: "Selected Team Leader was not found" },
+            { status: 400 }
+          );
+        }
+
+        newLeaderId = leader.id;
+      }
+
+      const { error: updateError } = await admin
+        .from("user_roles")
+        .update({ team_leader_id: newLeaderId })
+        .eq("id", recruiterId);
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Recruiter team updated successfully",
+      });
+    }
+
+    // ==========================================
+    // 2. ASSIGN TEAM LEADER TO UNIT MANAGER
+    // ==========================================
+
+    if (action === "assign_team_leader") {
+      const teamLeaderId = body.team_leader_id;
+      const unitManagerId = body.unit_manager_id;
+
+      if (
+        typeof teamLeaderId !== "string" ||
+        !teamLeaderId.trim()
+      ) {
+        return NextResponse.json(
+          { error: "Team Leader ID is required" },
           { status: 400 }
         );
       }
@@ -144,36 +200,75 @@ export async function POST(request) {
           .eq("id", teamLeaderId)
           .maybeSingle();
 
-      if (
-        leaderError ||
-        !leader ||
-        !["CEO", "Team Leader"].includes(leader.role)
-      ) {
+      if (leaderError || !leader) {
         return NextResponse.json(
-          { error: "Selected Team Leader was not found" },
+          { error: "Team Leader account not found" },
+          { status: 404 }
+        );
+      }
+
+      if (leader.role !== "Team Leader") {
+        return NextResponse.json(
+          { error: "Selected account is not a Team Leader" },
           { status: 400 }
         );
       }
 
-      newLeaderId = leader.id;
+      let newUnitManagerId = null;
+
+      if (unitManagerId !== null && unitManagerId !== "") {
+        if (typeof unitManagerId !== "string") {
+          return NextResponse.json(
+            { error: "Invalid Unit Manager ID" },
+            { status: 400 }
+          );
+        }
+
+        const { data: manager, error: managerError } =
+          await admin
+            .from("user_roles")
+            .select("id, role")
+            .eq("id", unitManagerId)
+            .maybeSingle();
+
+        if (
+          managerError ||
+          !manager ||
+          manager.role !== "Unit Manager"
+        ) {
+          return NextResponse.json(
+            { error: "Selected Unit Manager was not found" },
+            { status: 400 }
+          );
+        }
+
+        newUnitManagerId = manager.id;
+      }
+
+      const { error: updateError } = await admin
+        .from("user_roles")
+        .update({
+          unit_manager_id: newUnitManagerId,
+        })
+        .eq("id", teamLeaderId);
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: updateError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Team Leader Unit Manager updated successfully",
+      });
     }
 
-    const { error: updateError } = await admin
-      .from("user_roles")
-      .update({ team_leader_id: newLeaderId })
-      .eq("id", recruiterId);
-
-    if (updateError) {
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Recruiter team updated successfully"
-    });
+    return NextResponse.json(
+      { error: "Invalid assignment action" },
+      { status: 400 }
+    );
 
   } catch (error) {
     return NextResponse.json(
