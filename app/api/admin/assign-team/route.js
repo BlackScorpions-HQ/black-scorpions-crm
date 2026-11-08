@@ -87,10 +87,7 @@ export async function POST(request) {
     const body = await request.json();
     const action = body.action || "assign_recruiter";
 
-    // ==========================================
-    // 1. ASSIGN RECRUITER TO TEAM LEADER
-    // ==========================================
-
+    // 1. ASSIGN RECRUITER TO CEO OR TEAM LEADER
     if (action === "assign_recruiter") {
       const recruiterId = body.recruiter_id;
       const teamLeaderId = body.team_leader_id;
@@ -146,10 +143,10 @@ export async function POST(request) {
         if (
           leaderError ||
           !leader ||
-          leader.role !== "Team Leader"
+          !["CEO", "Team Leader"].includes(leader.role)
         ) {
           return NextResponse.json(
-            { error: "Selected Team Leader was not found" },
+            { error: "Selected CEO or Team Leader was not found" },
             { status: 400 }
           );
         }
@@ -175,10 +172,7 @@ export async function POST(request) {
       });
     }
 
-    // ==========================================
     // 2. ASSIGN TEAM LEADER TO UNIT MANAGER
-    // ==========================================
-
     if (action === "assign_team_leader") {
       const teamLeaderId = body.team_leader_id;
       const unitManagerId = body.unit_manager_id;
