@@ -82,8 +82,8 @@ export default function SuccessfulHires() {
 
       const currentRole = roleData.role;
 
-      if (!["CEO", "Team Leader", "Recruiter"].includes(currentRole)) {
-        setError("You do not have permission to access this page.");
+       if (!["CEO", "Assistant", "Team Leader", "Recruiter"].includes(currentRole)) {
+         setError("You do not have permission to access this page.");
         setLoading(false);
         return;
       }
