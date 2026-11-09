@@ -220,12 +220,19 @@ export default function AccountManagement() {
         result = { raw: rawResponse };
       }
 
+      // Show detailed database diagnostics
       if (!response.ok) {
+        const dbError = result.database_error;
+
         throw new Error(
           `HTTP ${response.status}\n` +
           `API RESPONSE: ${
             result.error || result.raw || "Unknown server error"
-          }`
+          }\n\n` +
+          `DATABASE ERROR CODE: ${dbError?.code || "Not provided"}\n` +
+          `DATABASE ERROR MESSAGE: ${dbError?.message || "Not provided"}\n` +
+          `DATABASE ERROR DETAILS: ${dbError?.details || "Not provided"}\n` +
+          `DATABASE ERROR HINT: ${dbError?.hint || "Not provided"}`
         );
       }
 
