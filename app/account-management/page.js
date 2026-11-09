@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
 
 const UNIT_ROLE = "Unit Manager";
+const ALLOWED_ROLES = ["CEO", "Assistant"];
 
 export default function AccountManagement() {
   const [supabase] = useState(() => createClient());
@@ -13,6 +14,7 @@ export default function AccountManagement() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentRole, setCurrentRole] = useState("");
 
   const [users, setUsers] = useState([]);
   const [hires, setHires] = useState([]);
@@ -20,11 +22,13 @@ export default function AccountManagement() {
 
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedLeader, setSelectedLeader] = useState("");
-
   const [selectedTeamLeader, setSelectedTeamLeader] = useState("");
   const [selectedUnitManager, setSelectedUnitManager] = useState("");
 
   const [message, setMessage] = useState("");
+
+  const isCEO = currentRole === "CEO";
+  const isAssistant = currentRole === "Assistant";
 
   async function loadData() {
     setLoading(true);
@@ -41,17 +45,18 @@ export default function AccountManagement() {
         return;
       }
 
-      const { data: roleData, error: roleError } =
-        await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-      if (roleError || roleData?.role !== "CEO") {
+      if (roleError || !ALLOWED_ROLES.includes(roleData?.role)) {
         router.replace("/");
         return;
       }
+
+      setCurrentRole(roleData.role);
 
       const [membersResult, hiresResult, commissionsResult] =
         await Promise.all([
@@ -79,7 +84,6 @@ export default function AccountManagement() {
       setUsers(membersResult.data || []);
       setHires(hiresResult.data || []);
       setCommissions(commissionsResult.data || []);
-
     } catch (error) {
       setMessage(error.message || "Unable to load account data.");
     } finally {
@@ -100,6 +104,10 @@ export default function AccountManagement() {
   }
 
   async function sendAssignment(body) {
+    if (!ALLOWED_ROLES.includes(currentRole)) {
+      throw new Error("Access denied.");
+    }
+
     const token = await getToken();
 
     if (!token) {
@@ -146,7 +154,6 @@ export default function AccountManagement() {
       setSelectedLeader("");
 
       await loadData();
-
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -178,7 +185,6 @@ export default function AccountManagement() {
       setSelectedUnitManager("");
 
       await loadData();
-
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -187,6 +193,12 @@ export default function AccountManagement() {
   }
 
   async function deleteUser() {
+    // Assistant is never allowed to delete accounts.
+    if (!isCEO) {
+      setMessage("Only the CEO can delete accounts.");
+      return;
+    }
+
     if (!selectedUser) {
       setMessage("Select a Recruiter first.");
       return;
@@ -237,7 +249,6 @@ export default function AccountManagement() {
       setSelectedLeader("");
 
       await loadData();
-
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -323,15 +334,14 @@ export default function AccountManagement() {
         .map((r) => r.member_id),
     ];
 
-    const teamHires = hires.filter(
-      (h) =>
-        managerLeaders.some(
-          (l) => l.member_id === h.team_leader_id
-        )
+    const teamHires = hires.filter((h) =>
+      managerLeaders.some(
+        (l) => l.member_id === h.team_leader_id
+      )
     );
 
-    const teamCommissions = commissions.filter(
-      (c) => memberIds.includes(c.user_id)
+    const teamCommissions = commissions.filter((c) =>
+      memberIds.includes(c.user_id)
     );
 
     return {
@@ -379,8 +389,9 @@ export default function AccountManagement() {
 
         <header style={s.header}>
           <div style={s.logo}>♏</div>
+
           <p style={s.eyebrow}>
-            BLACK SCORPIONS • CEO CONTROL CENTER
+            BLACK SCORPIONS • {isCEO ? "CEO CONTROL CENTER" : "EXECUTIVE ASSISTANT"}
           </p>
 
           <h1 style={s.title}>
@@ -390,6 +401,10 @@ export default function AccountManagement() {
           <p style={s.subtitle}>
             Manage your organization, teams and performance.
           </p>
+
+          <div style={s.roleBadge}>
+            {currentRole === "CEO" ? "CEO ACCESS" : "EXECUTIVE ASSISTANT ACCESS"}
+          </div>
 
           <div style={s.line} />
         </header>
@@ -418,13 +433,11 @@ export default function AccountManagement() {
 
             <section style={s.section}>
               <SectionTitle
-                eyebrow="CEO OPERATIONS"
+                eyebrow="ORGANIZATION OPERATIONS"
                 title="RECRUITER MANAGEMENT"
               />
 
-              <label style={s.label}>
-                SELECT RECRUITER
-              </label>
+              <label style={s.label}>SELECT RECRUITER</label>
 
               <select
                 style={s.select}
@@ -445,15 +458,11 @@ export default function AccountManagement() {
               {selectedRecruiter && (
                 <div style={s.info}>
                   Current Team:{" "}
-                  <strong>
-                    {selectedRecruiter.team_leader_name}
-                  </strong>
+                  <strong>{selectedRecruiter.team_leader_name}</strong>
                 </div>
               )}
 
-              <label style={s.label}>
-                ASSIGN TO TEAM LEADER
-              </label>
+              <label style={s.label}>ASSIGN TO TEAM LEADER</label>
 
               <select
                 style={s.select}
@@ -476,13 +485,21 @@ export default function AccountManagement() {
                 {saving ? "PLEASE WAIT..." : "UPDATE RECRUITER TEAM"}
               </button>
 
-              <button
-                style={s.deleteButton}
-                disabled={saving || !selectedUser}
-                onClick={deleteUser}
-              >
-                DELETE RECRUITER ACCOUNT
-              </button>
+              {isCEO && (
+                <button
+                  style={s.deleteButton}
+                  disabled={saving || !selectedUser}
+                  onClick={deleteUser}
+                >
+                  DELETE RECRUITER ACCOUNT
+                </button>
+              )}
+
+              {isAssistant && (
+                <p style={s.permissionNote}>
+                  Account deletion is restricted to the CEO.
+                </p>
+              )}
 
               {unassignedRecruiters.length > 0 && (
                 <p style={s.note}>
@@ -502,9 +519,7 @@ export default function AccountManagement() {
                 title="UNIT MANAGER MANAGEMENT"
               />
 
-              <label style={s.label}>
-                SELECT TEAM LEADER
-              </label>
+              <label style={s.label}>SELECT TEAM LEADER</label>
 
               <select
                 style={s.select}
@@ -536,9 +551,7 @@ export default function AccountManagement() {
                 </div>
               )}
 
-              <label style={s.label}>
-                ASSIGN TO UNIT MANAGER
-              </label>
+              <label style={s.label}>ASSIGN TO UNIT MANAGER</label>
 
               <select
                 style={s.select}
@@ -582,9 +595,7 @@ export default function AccountManagement() {
               />
 
               {managers.length === 0 && (
-                <p style={s.empty}>
-                  No Unit Managers found.
-                </p>
+                <p style={s.empty}>No Unit Managers found.</p>
               )}
 
               {managers.map((manager) => {
@@ -747,7 +758,8 @@ export default function AccountManagement() {
                       <strong>{leader.member_name}</strong>
                       <p style={s.note}>
                         {getTeamRecruiters(leader.member_id).length} Recruiters
-                        • {getPerformance(leader.member_id).hires} Hires
+                        {" • "}
+                        {getPerformance(leader.member_id).hires} Hires
                       </p>
                     </div>
                   ))}
@@ -881,6 +893,18 @@ const s = {
     color: "#999",
     fontSize: 13,
   },
+  roleBadge: {
+    display: "inline-block",
+    color: "#d4af37",
+    border: "1px solid #80672b",
+    background: "rgba(212,175,55,.07)",
+    borderRadius: 20,
+    padding: "7px 14px",
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1,
+    marginTop: 12,
+  },
   line: {
     width: 100,
     height: 2,
@@ -957,6 +981,12 @@ const s = {
     color: "#ff8585",
     fontWeight: "bold",
     cursor: "pointer",
+  },
+  permissionNote: {
+    color: "#999",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 12,
   },
   managerCard: {
     border: "1px solid rgba(212,175,55,.35)",
