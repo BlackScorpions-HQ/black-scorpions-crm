@@ -15,6 +15,11 @@ const PROMOTION_ROLES = [
   "Unit Manager",
 ];
 
+const ASSISTANT_PROMOTION_ROLES = [
+  "Recruiter",
+  "Team Leader",
+];
+
 export default function AccountManagement() {
   const [supabase] = useState(() => createClient());
   const router = useRouter();
@@ -141,10 +146,10 @@ export default function AccountManagement() {
     return result;
   }
 
-  // CEO ONLY: Change a member's role
+  // CEO AND ASSISTANT: Change member roles with different permissions
   async function updateUserRole() {
-    if (!isCEO) {
-      setMessage("Only the CEO can change user roles.");
+    if (!isCEO && !isAssistant) {
+      setMessage("You are not authorized to change user roles.");
       return;
     }
 
@@ -153,8 +158,16 @@ export default function AccountManagement() {
       return;
     }
 
-    if (!newRole || !PROMOTION_ROLES.includes(newRole)) {
-      setMessage("Select a valid new role.");
+    const allowedRoles = isCEO
+      ? PROMOTION_ROLES
+      : ASSISTANT_PROMOTION_ROLES;
+
+    if (!newRole || !allowedRoles.includes(newRole)) {
+      setMessage(
+        isAssistant
+          ? "Assistant can only assign Recruiter or Team Leader roles."
+          : "Select a valid new role."
+      );
       return;
     }
 
@@ -220,7 +233,6 @@ export default function AccountManagement() {
         result = { raw: rawResponse };
       }
 
-      // Show detailed database diagnostics
       if (!response.ok) {
         const dbError = result.database_error;
 
@@ -554,7 +566,9 @@ export default function AccountManagement() {
           </p>
 
           <div style={s.roleBadge}>
-            {currentRole === "CEO" ? "CEO ACCESS" : "EXECUTIVE ASSISTANT ACCESS"}
+            {currentRole === "CEO"
+              ? "CEO ACCESS"
+              : "EXECUTIVE ASSISTANT ACCESS"}
           </div>
 
           <div style={s.line} />
@@ -581,9 +595,9 @@ export default function AccountManagement() {
               ))}
             </div>
 
-            {/* ROLE MANAGEMENT - CEO ONLY */}
+            {/* ROLE MANAGEMENT - CEO AND ASSISTANT */}
 
-            {isCEO && (
+            {(isCEO || isAssistant) && (
               <section style={s.section}>
                 <SectionTitle
                   eyebrow="EXECUTIVE ACCESS CONTROL"
@@ -591,8 +605,10 @@ export default function AccountManagement() {
                 />
 
                 <p style={s.roleDescription}>
-                  Promote or change team member roles.
-                  CEO accounts are protected and cannot be modified here.
+                  {isCEO
+                    ? "Manage all team member roles, including Assistant and Unit Manager promotions."
+                    : "Manage team member roles. You can assign Recruiter or Team Leader roles only. Assistant and Unit Manager promotions are restricted to the CEO."}
+                  {" "}CEO accounts are protected and cannot be modified.
                 </p>
 
                 <label style={s.label}>
@@ -647,7 +663,10 @@ export default function AccountManagement() {
                 >
                   <option value="">Choose New Role...</option>
 
-                  {PROMOTION_ROLES.map((role) => (
+                  {(isCEO
+                    ? PROMOTION_ROLES
+                    : ASSISTANT_PROMOTION_ROLES
+                  ).map((role) => (
                     <option
                       key={role}
                       value={role}
@@ -663,6 +682,12 @@ export default function AccountManagement() {
                 <div style={s.roleWarning}>
                   <strong>IMPORTANT:</strong> Role changes affect account
                   permissions. Only promote trusted team members.
+                  {isAssistant && (
+                    <>
+                      {" "}Assistant cannot assign Assistant or Unit Manager
+                      roles.
+                    </>
+                  )}
                 </div>
 
                 <button
