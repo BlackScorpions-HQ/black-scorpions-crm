@@ -32,7 +32,6 @@ export default function AccountManagement() {
   const [selectedTeamLeader, setSelectedTeamLeader] = useState("");
   const [selectedUnitManager, setSelectedUnitManager] = useState("");
 
-  // Role Management
   const [roleTargetId, setRoleTargetId] = useState("");
   const [newRole, setNewRole] = useState("");
 
@@ -43,7 +42,6 @@ export default function AccountManagement() {
 
   async function loadData() {
     setLoading(true);
-    setMessage("");
 
     try {
       const {
@@ -189,13 +187,15 @@ export default function AccountManagement() {
     if (!confirmed) return;
 
     setSaving(true);
-    setMessage("");
+    setMessage("SENDING ROLE UPDATE REQUEST...");
 
     try {
       const token = await getToken();
 
       if (!token) {
-        throw new Error("Please login again.");
+        throw new Error(
+          "No active session. Please login again."
+        );
       }
 
       const response = await fetch("/api/admin/update-role", {
@@ -210,10 +210,36 @@ export default function AccountManagement() {
         }),
       });
 
-      const result = await response.json();
+      const rawResponse = await response.text();
+
+      let result = {};
+
+      try {
+        result = JSON.parse(rawResponse);
+      } catch {
+        result = { raw: rawResponse };
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || "Role update failed.");
+        throw new Error(
+          `HTTP ${response.status}\n` +
+          `API RESPONSE: ${
+            result.error || result.raw || "Unknown server error"
+          }`
+        );
+      }
+
+      if (!result.success || !result.user?.role) {
+        throw new Error(
+          `HTTP ${response.status}\n` +
+          `Unexpected API response: ${rawResponse}`
+        );
+      }
+
+      if (result.user.role !== newRole) {
+        throw new Error(
+          `API returned an unexpected role: ${result.user.role}`
+        );
       }
 
       setRoleTargetId("");
@@ -222,10 +248,16 @@ export default function AccountManagement() {
       await loadData();
 
       setMessage(
-        `${target.member_name}'s role was successfully updated to ${newRole}.`
+        `SUCCESS!\nHTTP ${response.status}\n` +
+        `Member: ${target.member_name}\n` +
+        `Database Role: ${result.user.role}`
       );
     } catch (error) {
-      setMessage(error.message || "Unable to update user role.");
+      setMessage(
+        `ROLE UPDATE FAILED\n\n${
+          error.message || "Unknown error"
+        }`
+      );
     } finally {
       setSaving(false);
     }
@@ -320,7 +352,9 @@ export default function AccountManagement() {
     try {
       const token = await getToken();
 
-      if (!token) throw new Error("Please login again.");
+      if (!token) {
+        throw new Error("Please login again.");
+      }
 
       const response = await fetch("/api/admin/delete-user", {
         method: "POST",
@@ -370,7 +404,6 @@ export default function AccountManagement() {
     (u) => u.member_role === UNIT_ROLE
   );
 
-  // CEO accounts are excluded from the role selector.
   const roleTargets = users.filter(
     (u) => u.member_role !== "CEO"
   );
@@ -659,6 +692,7 @@ export default function AccountManagement() {
                 }}
               >
                 <option value="">Choose Recruiter...</option>
+
                 {recruiters.map((r) => (
                   <option key={r.member_id} value={r.member_id}>
                     {r.member_name}
@@ -681,6 +715,7 @@ export default function AccountManagement() {
                 onChange={(e) => setSelectedLeader(e.target.value)}
               >
                 <option value="">Direct under CEO</option>
+
                 {leaders.map((l) => (
                   <option key={l.member_id} value={l.member_id}>
                     {l.member_name}
@@ -741,6 +776,7 @@ export default function AccountManagement() {
                 }}
               >
                 <option value="">Choose Team Leader...</option>
+
                 {leaders.map((l) => (
                   <option key={l.member_id} value={l.member_id}>
                     {l.member_name}
@@ -772,6 +808,7 @@ export default function AccountManagement() {
                 }
               >
                 <option value="">Unassigned</option>
+
                 {managers.map((m) => (
                   <option key={m.member_id} value={m.member_id}>
                     {m.member_name}
@@ -882,14 +919,17 @@ export default function AccountManagement() {
                                   label="HIRES"
                                   value={leaderPerformance.hires}
                                 />
+
                                 <Metric
                                   label="TOTAL COMMISSION"
                                   value={`${leaderPerformance.totalCommission.toLocaleString()} EGP`}
                                 />
+
                                 <Metric
                                   label="PAID"
                                   value={`${leaderPerformance.paid.toLocaleString()} EGP`}
                                 />
+
                                 <Metric
                                   label="PENDING"
                                   value={`${leaderPerformance.pending.toLocaleString()} EGP`}
@@ -967,6 +1007,7 @@ export default function AccountManagement() {
                   {unassignedLeaders.map((leader) => (
                     <div style={s.teamCard} key={leader.member_id}>
                       <strong>{leader.member_name}</strong>
+
                       <p style={s.note}>
                         {getTeamRecruiters(leader.member_id).length} Recruiters
                         {" • "}
@@ -1016,7 +1057,9 @@ export default function AccountManagement() {
         )}
 
         {message && (
-          <div style={s.message}>{message}</div>
+          <div style={s.message}>
+            <pre style={s.messageText}>{message}</pre>
+          </div>
         )}
 
         <footer style={s.footer}>
@@ -1054,6 +1097,7 @@ const s = {
     fontFamily: "Arial, sans-serif",
     position: "relative",
   },
+
   glow: {
     position: "absolute",
     top: 250,
@@ -1065,12 +1109,14 @@ const s = {
     filter: "blur(100px)",
     pointerEvents: "none",
   },
+
   container: {
     maxWidth: 1150,
     margin: "auto",
     position: "relative",
     zIndex: 1,
   },
+
   back: {
     background: "rgba(212,175,55,0.06)",
     color: "#d4af37",
@@ -1081,29 +1127,35 @@ const s = {
     fontWeight: "bold",
     marginBottom: 25,
   },
+
   header: {
     textAlign: "center",
     marginBottom: 35,
   },
+
   logo: {
     fontSize: 40,
     color: "#d4af37",
     marginBottom: 10,
   },
+
   eyebrow: {
     color: "#a98b3b",
     fontSize: 11,
     letterSpacing: 3,
   },
+
   title: {
     fontSize: "clamp(26px, 5vw, 42px)",
     fontWeight: 900,
     letterSpacing: 2,
   },
+
   subtitle: {
     color: "#999",
     fontSize: 13,
   },
+
   roleBadge: {
     display: "inline-block",
     color: "#d4af37",
@@ -1116,24 +1168,28 @@ const s = {
     letterSpacing: 1,
     marginTop: 12,
   },
+
   line: {
     width: 100,
     height: 2,
     background: "#d4af37",
     margin: "22px auto",
   },
+
   stats: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))",
     gap: 12,
     marginBottom: 22,
   },
+
   stat: {
     background: "#17150f",
     border: "1px solid rgba(212,175,55,.25)",
     borderRadius: 12,
     padding: 17,
   },
+
   section: {
     background: "linear-gradient(145deg,#191919,#101010)",
     border: "1px solid rgba(212,175,55,.23)",
@@ -1142,15 +1198,18 @@ const s = {
     marginBottom: 22,
     overflow: "hidden",
   },
+
   sectionTitle: {
     marginBottom: 22,
   },
+
   roleDescription: {
     color: "#999",
     fontSize: 12,
     lineHeight: 1.8,
     marginTop: -10,
   },
+
   roleInfo: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
@@ -1161,6 +1220,7 @@ const s = {
     borderRadius: 8,
     marginBottom: 8,
   },
+
   roleWarning: {
     color: "#c5a85c",
     background: "rgba(212,175,55,.06)",
@@ -1171,6 +1231,7 @@ const s = {
     fontSize: 11,
     lineHeight: 1.7,
   },
+
   label: {
     display: "block",
     color: "#c6a747",
@@ -1179,6 +1240,7 @@ const s = {
     letterSpacing: 1,
     margin: "17px 0 9px",
   },
+
   select: {
     width: "100%",
     padding: 14,
@@ -1189,6 +1251,7 @@ const s = {
     marginBottom: 10,
     fontSize: 13,
   },
+
   info: {
     padding: 13,
     background: "rgba(212,175,55,.07)",
@@ -1197,6 +1260,7 @@ const s = {
     fontSize: 12,
     lineHeight: 2,
   },
+
   goldButton: {
     width: "100%",
     padding: 15,
@@ -1208,6 +1272,7 @@ const s = {
     fontWeight: 900,
     cursor: "pointer",
   },
+
   deleteButton: {
     width: "100%",
     padding: 14,
@@ -1219,12 +1284,14 @@ const s = {
     fontWeight: "bold",
     cursor: "pointer",
   },
+
   permissionNote: {
     color: "#999",
     fontSize: 11,
     textAlign: "center",
     marginTop: 12,
   },
+
   managerCard: {
     border: "1px solid rgba(212,175,55,.35)",
     borderRadius: 12,
@@ -1232,6 +1299,7 @@ const s = {
     marginBottom: 20,
     background: "#111",
   },
+
   managerHeader: {
     display: "flex",
     alignItems: "center",
@@ -1242,6 +1310,7 @@ const s = {
     paddingBottom: 14,
     marginBottom: 14,
   },
+
   teamCard: {
     background: "#191919",
     border: "1px solid #3d3420",
@@ -1249,6 +1318,7 @@ const s = {
     padding: 14,
     marginTop: 13,
   },
+
   teamHeader: {
     display: "flex",
     justifyContent: "space-between",
@@ -1256,6 +1326,7 @@ const s = {
     flexWrap: "wrap",
     gap: 10,
   },
+
   badge: {
     color: "#d4af37",
     border: "1px solid #80672b",
@@ -1264,12 +1335,14 @@ const s = {
     fontSize: 10,
     fontWeight: "bold",
   },
+
   performanceGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))",
     gap: 9,
     margin: "14px 0",
   },
+
   metric: {
     background: "#0b0b0b",
     border: "1px solid #302817",
@@ -1277,11 +1350,13 @@ const s = {
     padding: 11,
     minWidth: 0,
   },
+
   tableWrap: {
     overflowX: "auto",
     width: "100%",
     marginTop: 13,
   },
+
   table: {
     width: "100%",
     minWidth: 570,
@@ -1289,17 +1364,20 @@ const s = {
     textAlign: "left",
     fontSize: 12,
   },
+
   empty: {
     color: "#888",
     textAlign: "center",
     padding: 20,
   },
+
   note: {
     color: "#888",
     fontSize: 11,
     lineHeight: 1.7,
     marginTop: 13,
   },
+
   message: {
     marginTop: 18,
     padding: 14,
@@ -1309,11 +1387,21 @@ const s = {
     color: "#e8c75a",
     fontSize: 13,
   },
+
+  messageText: {
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    fontFamily: "Arial, sans-serif",
+    margin: 0,
+    lineHeight: 1.7,
+  },
+
   loading: {
     textAlign: "center",
     padding: 60,
     color: "#d4af37",
   },
+
   footer: {
     textAlign: "center",
     color: "#68604c",
