@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 const ALLOWED_ROLES = [
   "Recruiter",
   "Assistant",
@@ -23,7 +25,6 @@ export async function POST(request) {
       );
     }
 
-    // Authenticate the requesting user
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -55,7 +56,6 @@ export async function POST(request) {
       );
     }
 
-    // Admin client
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         persistSession: false,
@@ -63,7 +63,6 @@ export async function POST(request) {
       },
     });
 
-    // Verify requester role directly from the database
     const { data: requester, error: requesterError } = await admin
       .from("user_roles")
       .select("id, role")
@@ -71,7 +70,7 @@ export async function POST(request) {
       .maybeSingle();
 
     if (requesterError) {
-      console.error("Requester role error:", requesterError);
+      console.error("REQUESTER ROLE ERROR:", requesterError);
 
       return NextResponse.json(
         { error: "Could not verify account permissions." },
@@ -86,7 +85,6 @@ export async function POST(request) {
       );
     }
 
-    // Read request body
     const body = await request.json();
     const { user_id, new_role } = body;
 
@@ -107,7 +105,6 @@ export async function POST(request) {
       );
     }
 
-    // Prevent accidental self-demotion
     if (user_id === user.id) {
       return NextResponse.json(
         { error: "You cannot change your own role." },
@@ -115,7 +112,6 @@ export async function POST(request) {
       );
     }
 
-    // Verify target account
     const { data: target, error: targetError } = await admin
       .from("user_roles")
       .select("id, role")
@@ -123,7 +119,7 @@ export async function POST(request) {
       .maybeSingle();
 
     if (targetError) {
-      console.error("Target lookup error:", targetError);
+      console.error("TARGET LOOKUP ERROR:", targetError);
 
       return NextResponse.json(
         { error: "Could not find the selected account." },
@@ -138,7 +134,6 @@ export async function POST(request) {
       );
     }
 
-    // CEO accounts are protected
     if (target.role === "CEO") {
       return NextResponse.json(
         { error: "CEO accounts cannot be modified." },
@@ -153,7 +148,6 @@ export async function POST(request) {
       );
     }
 
-    // Update role only. Team assignments remain unchanged.
     const { data: updatedUser, error: updateError } = await admin
       .from("user_roles")
       .update({ role: new_role })
@@ -163,10 +157,23 @@ export async function POST(request) {
       .maybeSingle();
 
     if (updateError) {
-      console.error("Role update error:", updateError);
+      console.error("ROLE UPDATE DATABASE ERROR:", {
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+      });
 
       return NextResponse.json(
-        { error: "Failed to update user role." },
+        {
+          error: "Failed to update user role.",
+          database_error: {
+            code: updateError.code || null,
+            message: updateError.message || null,
+            details: updateError.details || null,
+            hint: updateError.hint || null,
+          },
+        },
         { status: 500 }
       );
     }
@@ -184,7 +191,7 @@ export async function POST(request) {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Update role API error:", error);
+    console.error("UPDATE ROLE API ERROR:", error);
 
     return NextResponse.json(
       { error: "An unexpected server error occurred." },
