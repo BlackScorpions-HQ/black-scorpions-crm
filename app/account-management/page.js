@@ -8,6 +8,13 @@ import { createClient } from "../../utils/supabase/client";
 const UNIT_ROLE = "Unit Manager";
 const ALLOWED_ROLES = ["CEO", "Assistant"];
 
+const PROMOTION_ROLES = [
+  "Recruiter",
+  "Assistant",
+  "Team Leader",
+  "Unit Manager",
+];
+
 export default function AccountManagement() {
   const [supabase] = useState(() => createClient());
   const router = useRouter();
@@ -24,6 +31,10 @@ export default function AccountManagement() {
   const [selectedLeader, setSelectedLeader] = useState("");
   const [selectedTeamLeader, setSelectedTeamLeader] = useState("");
   const [selectedUnitManager, setSelectedUnitManager] = useState("");
+
+  // Role Management
+  const [roleTargetId, setRoleTargetId] = useState("");
+  const [newRole, setNewRole] = useState("");
 
   const [message, setMessage] = useState("");
 
@@ -132,6 +143,94 @@ export default function AccountManagement() {
     return result;
   }
 
+  // CEO ONLY: Change a member's role
+  async function updateUserRole() {
+    if (!isCEO) {
+      setMessage("Only the CEO can change user roles.");
+      return;
+    }
+
+    if (!roleTargetId) {
+      setMessage("Select a team member first.");
+      return;
+    }
+
+    if (!newRole || !PROMOTION_ROLES.includes(newRole)) {
+      setMessage("Select a valid new role.");
+      return;
+    }
+
+    const target = users.find(
+      (u) => u.member_id === roleTargetId
+    );
+
+    if (!target) {
+      setMessage("Selected account was not found.");
+      return;
+    }
+
+    if (target.member_role === "CEO") {
+      setMessage("CEO accounts cannot be modified.");
+      return;
+    }
+
+    if (target.member_role === newRole) {
+      setMessage("This user already has the selected role.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Change ${target.member_name}'s role?\n\n` +
+      `Current Role: ${target.member_role}\n` +
+      `New Role: ${newRole}\n\n` +
+      `This action will update their account permissions.`
+    );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const token = await getToken();
+
+      if (!token) {
+        throw new Error("Please login again.");
+      }
+
+      const response = await fetch("/api/admin/update-role", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: roleTargetId,
+          new_role: newRole,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Role update failed.");
+      }
+
+      setRoleTargetId("");
+      setNewRole("");
+
+      await loadData();
+
+      setMessage(
+        `${target.member_name}'s role was successfully updated to ${newRole}.`
+      );
+    } catch (error) {
+      setMessage(error.message || "Unable to update user role.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function moveRecruiter() {
     if (!selectedUser) {
       setMessage("Select a Recruiter first.");
@@ -148,12 +247,12 @@ export default function AccountManagement() {
         team_leader_id: selectedLeader || null,
       });
 
-      setMessage("Recruiter team updated successfully!");
-
       setSelectedUser("");
       setSelectedLeader("");
 
       await loadData();
+
+      setMessage("Recruiter team updated successfully!");
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -177,14 +276,14 @@ export default function AccountManagement() {
         unit_manager_id: selectedUnitManager || null,
       });
 
-      setMessage(
-        "Team Leader and team assignment updated successfully!"
-      );
-
       setSelectedTeamLeader("");
       setSelectedUnitManager("");
 
       await loadData();
+
+      setMessage(
+        "Team Leader and team assignment updated successfully!"
+      );
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -193,7 +292,6 @@ export default function AccountManagement() {
   }
 
   async function deleteUser() {
-    // Assistant is never allowed to delete accounts.
     if (!isCEO) {
       setMessage("Only the CEO can delete accounts.");
       return;
@@ -241,14 +339,14 @@ export default function AccountManagement() {
         throw new Error(result.error || "Delete failed.");
       }
 
-      setMessage(
-        "Account deleted. Candidate records were preserved."
-      );
-
       setSelectedUser("");
       setSelectedLeader("");
 
       await loadData();
+
+      setMessage(
+        "Account deleted. Candidate records were preserved."
+      );
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -260,6 +358,10 @@ export default function AccountManagement() {
     (u) => u.member_role === "Recruiter"
   );
 
+  const assistants = users.filter(
+    (u) => u.member_role === "Assistant"
+  );
+
   const leaders = users.filter(
     (u) => u.member_role === "Team Leader"
   );
@@ -268,12 +370,21 @@ export default function AccountManagement() {
     (u) => u.member_role === UNIT_ROLE
   );
 
+  // CEO accounts are excluded from the role selector.
+  const roleTargets = users.filter(
+    (u) => u.member_role !== "CEO"
+  );
+
   const selectedRecruiter = recruiters.find(
     (u) => u.member_id === selectedUser
   );
 
   const selectedLeaderData = leaders.find(
     (u) => u.member_id === selectedTeamLeader
+  );
+
+  const selectedRoleTarget = roleTargets.find(
+    (u) => u.member_id === roleTargetId
   );
 
   function getPerformance(userId) {
@@ -418,6 +529,7 @@ export default function AccountManagement() {
                 ["TOTAL MEMBERS", users.length],
                 ["UNIT MANAGERS", managers.length],
                 ["TEAM LEADERS", leaders.length],
+                ["ASSISTANTS", assistants.length],
                 ["RECRUITERS", recruiters.length],
                 ["SUCCESSFUL HIRES", hires.length],
                 ["TOTAL CANDIDATES", totalCandidates],
@@ -428,6 +540,105 @@ export default function AccountManagement() {
                 </div>
               ))}
             </div>
+
+            {/* ROLE MANAGEMENT - CEO ONLY */}
+
+            {isCEO && (
+              <section style={s.section}>
+                <SectionTitle
+                  eyebrow="EXECUTIVE ACCESS CONTROL"
+                  title="ROLE MANAGEMENT"
+                />
+
+                <p style={s.roleDescription}>
+                  Promote or change team member roles.
+                  CEO accounts are protected and cannot be modified here.
+                </p>
+
+                <label style={s.label}>
+                  SELECT TEAM MEMBER
+                </label>
+
+                <select
+                  style={s.select}
+                  value={roleTargetId}
+                  onChange={(e) => {
+                    setRoleTargetId(e.target.value);
+                    setNewRole("");
+                    setMessage("");
+                  }}
+                  disabled={saving}
+                >
+                  <option value="">Choose Team Member...</option>
+
+                  {roleTargets.map((member) => (
+                    <option
+                      key={member.member_id}
+                      value={member.member_id}
+                    >
+                      {member.member_name} — {member.member_role}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedRoleTarget && (
+                  <div style={s.roleInfo}>
+                    <div>
+                      <small>SELECTED MEMBER</small>
+                      <strong>{selectedRoleTarget.member_name}</strong>
+                    </div>
+
+                    <div>
+                      <small>CURRENT ROLE</small>
+                      <strong>{selectedRoleTarget.member_role}</strong>
+                    </div>
+                  </div>
+                )}
+
+                <label style={s.label}>
+                  SELECT NEW ROLE
+                </label>
+
+                <select
+                  style={s.select}
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  disabled={!roleTargetId || saving}
+                >
+                  <option value="">Choose New Role...</option>
+
+                  {PROMOTION_ROLES.map((role) => (
+                    <option
+                      key={role}
+                      value={role}
+                      disabled={
+                        selectedRoleTarget?.member_role === role
+                      }
+                    >
+                      {role}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={s.roleWarning}>
+                  <strong>IMPORTANT:</strong> Role changes affect account
+                  permissions. Only promote trusted team members.
+                </div>
+
+                <button
+                  style={s.goldButton}
+                  disabled={
+                    saving ||
+                    !roleTargetId ||
+                    !newRole ||
+                    selectedRoleTarget?.member_role === newRole
+                  }
+                  onClick={updateUserRole}
+                >
+                  {saving ? "PLEASE WAIT..." : "UPDATE USER ROLE"}
+                </button>
+              </section>
+            )}
 
             {/* RECRUITER MANAGEMENT */}
 
@@ -933,6 +1144,32 @@ const s = {
   },
   sectionTitle: {
     marginBottom: 22,
+  },
+  roleDescription: {
+    color: "#999",
+    fontSize: 12,
+    lineHeight: 1.8,
+    marginTop: -10,
+  },
+  roleInfo: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
+    gap: 10,
+    padding: 14,
+    background: "rgba(212,175,55,.07)",
+    border: "1px solid rgba(212,175,55,.2)",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  roleWarning: {
+    color: "#c5a85c",
+    background: "rgba(212,175,55,.06)",
+    border: "1px solid rgba(212,175,55,.2)",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    fontSize: 11,
+    lineHeight: 1.7,
   },
   label: {
     display: "block",
