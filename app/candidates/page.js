@@ -15,6 +15,7 @@ export default function CandidatesPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [role, setRole] = useState("");
   const [message, setMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const initialForm = {
     full_name: "",
@@ -27,6 +28,9 @@ export default function CandidatesPage() {
   };
 
   const [form, setForm] = useState(initialForm);
+
+  const canManageCandidates = ["CEO", "Assistant"].includes(role);
+  const canAddCandidates = ["CEO", "Assistant", "Recruiter"].includes(role);
 
   async function initialize() {
     setLoading(true);
@@ -99,8 +103,50 @@ export default function CandidatesPage() {
     initialize();
   }, []);
 
+  function updateForm(field, value) {
+    setForm(previous => ({
+      ...previous,
+      [field]: value
+    }));
+  }
+
+  function startEditing(candidate) {
+    if (!canManageCandidates) return;
+
+    setEditingId(candidate.id);
+
+    setForm({
+      full_name: candidate.full_name || "",
+      phone: candidate.phone || "",
+      english_level: candidate.english_level || "B1",
+      location: candidate.location || "",
+      graduation_status: candidate.graduation_status || "Graduate",
+      work_type: candidate.work_type || "WFS",
+      offer_name: candidate.offer_name || ""
+    });
+
+    setMessage("");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setForm({ ...initialForm });
+    setMessage("");
+  }
+
   async function addCandidate(e) {
     e.preventDefault();
+
+    if (!canAddCandidates) {
+      setMessage("You do not have permission to add candidates.");
+      return;
+    }
+
     setSaving(true);
     setMessage("");
 
@@ -132,6 +178,42 @@ export default function CandidatesPage() {
       setMessage("Error: " + error.message);
     } else {
       setMessage("Candidate added successfully!");
+      setForm({ ...initialForm });
+      await loadCandidates();
+    }
+
+    setSaving(false);
+  }
+
+  async function saveCandidate(e) {
+    e.preventDefault();
+
+    if (!canManageCandidates || !editingId) {
+      setMessage("You do not have permission to edit candidates.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("candidates")
+      .update({
+        full_name: form.full_name,
+        phone: form.phone,
+        english_level: form.english_level,
+        location: form.location,
+        graduation_status: form.graduation_status,
+        work_type: form.work_type,
+        offer_name: form.offer_name
+      })
+      .eq("id", editingId);
+
+    if (error) {
+      setMessage("Update Error: " + error.message);
+    } else {
+      setMessage("Candidate updated successfully!");
+      setEditingId(null);
       setForm({ ...initialForm });
       await loadCandidates();
     }
@@ -310,137 +392,151 @@ export default function CandidatesPage() {
           </div>
         )}
 
-        <section style={{
-          background: "linear-gradient(145deg,#191919,#0c0c0c)",
-          border: "1px solid #80651f",
-          borderRadius: "15px",
-          padding: "22px",
-          marginBottom: "35px",
-          boxShadow: "0 10px 35px rgba(0,0,0,0.4)"
-        }}>
-          <h2 style={{
-            color: "#e5c45c",
-            marginBottom: "22px"
+        {canAddCandidates && (
+          <section style={{
+            background: "linear-gradient(145deg,#191919,#0c0c0c)",
+            border: "1px solid #80651f",
+            borderRadius: "15px",
+            padding: "22px",
+            marginBottom: "35px",
+            boxShadow: "0 10px 35px rgba(0,0,0,0.4)"
           }}>
-            🦂 Add New Candidate
-          </h2>
+            <h2 style={{
+              color: "#e5c45c",
+              marginBottom: "22px"
+            }}>
+              {editingId ? "🦂 Edit Candidate" : "🦂 Add New Candidate"}
+            </h2>
 
-          <form onSubmit={addCandidate}>
-            <label style={labelStyle}>Full Name</label>
-            <input
-              style={inputStyle}
-              required
-              value={form.full_name}
-              onChange={e => setForm({
-                ...form, full_name: e.target.value
-              })}
-              placeholder="Candidate full name"
-            />
+            <form onSubmit={editingId ? saveCandidate : addCandidate}>
+              <label style={labelStyle}>Full Name</label>
+              <input
+                style={inputStyle}
+                required
+                value={form.full_name}
+                onChange={e => updateForm("full_name", e.target.value)}
+                placeholder="Candidate full name"
+              />
 
-            <label style={labelStyle}>Phone Number</label>
-            <input
-              style={inputStyle}
-              required
-              value={form.phone}
-              onChange={e => setForm({
-                ...form, phone: e.target.value
-              })}
-              placeholder="Phone number"
-            />
+              <label style={labelStyle}>Phone Number</label>
+              <input
+                style={inputStyle}
+                required
+                value={form.phone}
+                onChange={e => updateForm("phone", e.target.value)}
+                placeholder="Phone number"
+              />
 
-            <label style={labelStyle}>Offer Name</label>
-            <select
-              style={inputStyle}
-              required
-              value={form.offer_name}
-              onChange={e => setForm({
-                ...form, offer_name: e.target.value
-              })}
-            >
-              <option value="">
-                Select an offer
-              </option>
+              <label style={labelStyle}>Offer Name</label>
+              <select
+                style={inputStyle}
+                required
+                value={form.offer_name}
+                onChange={e => updateForm("offer_name", e.target.value)}
+              >
+                <option value="">Select an offer</option>
 
-              {offers.map(offer => (
-                <option key={offer} value={offer}>
-                  {offer}
-                </option>
-              ))}
-            </select>
+                {offers.map(offer => (
+                  <option key={offer} value={offer}>
+                    {offer}
+                  </option>
+                ))}
 
-            {offers.length === 0 && (
-              <p style={{
-                color: "#999",
-                fontSize: "12px",
-                marginTop: "-10px",
-                marginBottom: "17px"
-              }}>
-                No offers found. Add offers in Job Offers first.
-              </p>
-            )}
+                {form.offer_name && !offers.includes(form.offer_name) && (
+                  <option value={form.offer_name}>
+                    {form.offer_name}
+                  </option>
+                )}
+              </select>
 
-            <label style={labelStyle}>English Level</label>
-            <select
-              style={inputStyle}
-              value={form.english_level}
-              onChange={e => setForm({
-                ...form, english_level: e.target.value
-              })}
-            >
-              {["A1","A2","B1","B2","C1","C2"].map(level =>
-                <option key={level}>{level}</option>
+              {offers.length === 0 && (
+                <p style={{
+                  color: "#999",
+                  fontSize: "12px",
+                  marginTop: "-10px",
+                  marginBottom: "17px"
+                }}>
+                  No offers found. Add offers in Job Offers first.
+                </p>
               )}
-            </select>
 
-            <label style={labelStyle}>Location</label>
-            <input
-              style={inputStyle}
-              required
-              value={form.location}
-              onChange={e => setForm({
-                ...form, location: e.target.value
-              })}
-              placeholder="Candidate location"
-            />
+              <label style={labelStyle}>English Level</label>
+              <select
+                style={inputStyle}
+                value={form.english_level}
+                onChange={e => updateForm("english_level", e.target.value)}
+              >
+                {["A1","A2","B1","B2","C1","C2"].map(level =>
+                  <option key={level}>{level}</option>
+                )}
+              </select>
 
-            <label style={labelStyle}>Graduation Status</label>
-            <select
-              style={inputStyle}
-              value={form.graduation_status}
-              onChange={e => setForm({
-                ...form, graduation_status: e.target.value
-              })}
-            >
-              {["Graduate","Undergraduate","Gap Year","Dropout"].map(value =>
-                <option key={value}>{value}</option>
+              <label style={labelStyle}>Location</label>
+              <input
+                style={inputStyle}
+                required
+                value={form.location}
+                onChange={e => updateForm("location", e.target.value)}
+                placeholder="Candidate location"
+              />
+
+              <label style={labelStyle}>Graduation Status</label>
+              <select
+                style={inputStyle}
+                value={form.graduation_status}
+                onChange={e => updateForm("graduation_status", e.target.value)}
+              >
+                {["Graduate","Undergraduate","Gap Year","Dropout"].map(value =>
+                  <option key={value}>{value}</option>
+                )}
+              </select>
+
+              <label style={labelStyle}>Work Type</label>
+              <select
+                style={inputStyle}
+                value={form.work_type}
+                onChange={e => updateForm("work_type", e.target.value)}
+              >
+                {["WFS","WFH","Both"].map(value =>
+                  <option key={value}>{value}</option>
+                )}
+              </select>
+
+              <button
+                type="submit"
+                disabled={saving || offers.length === 0}
+                style={{
+                  ...buttonStyle,
+                  opacity: saving || offers.length === 0 ? 0.6 : 1
+                }}
+              >
+                {saving
+                  ? "SAVING..."
+                  : editingId
+                    ? "SAVE CHANGES"
+                    : "🦂 ADD CANDIDATE"}
+              </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={saving}
+                  style={{
+                    ...buttonStyle,
+                    marginTop: "12px",
+                    background: "#252525",
+                    color: "#ddd",
+                    border: "1px solid #555",
+                    boxShadow: "none"
+                  }}
+                >
+                  CANCEL EDITING
+                </button>
               )}
-            </select>
-
-            <label style={labelStyle}>Work Type</label>
-            <select
-              style={inputStyle}
-              value={form.work_type}
-              onChange={e => setForm({
-                ...form, work_type: e.target.value
-              })}
-            >
-              {["WFS","WFH","Both"].map(value =>
-                <option key={value}>{value}</option>
-              )}
-            </select>
-
-            <button
-              type="submit"
-              disabled={saving || offers.length === 0}
-              style={{
-                ...buttonStyle,
-                opacity: saving || offers.length === 0 ? 0.6 : 1
-              }}
-            >
-              {saving ? "SAVING..." : "🦂 ADD CANDIDATE"}
-            </button>
-          </form>
-        </section>
+            </form>
+          </section>
+        )}
 
         <section>
           <h2 style={{
@@ -502,6 +598,26 @@ export default function CandidatesPage() {
                 }}>
                   Added By: {candidate.recruiter_name || "Not recorded"}
                 </p>
+
+                {canManageCandidates && (
+                  <button
+                    type="button"
+                    onClick={() => startEditing(candidate)}
+                    style={{
+                      marginTop: "16px",
+                      marginRight: "10px",
+                      background: "linear-gradient(110deg,#8c691b,#f5dc85,#b68b25)",
+                      color: "#080808",
+                      border: "1px solid #f5dc85",
+                      borderRadius: "8px",
+                      padding: "11px 16px",
+                      fontWeight: "bold",
+                      cursor: "pointer"
+                    }}
+                  >
+                    EDIT CANDIDATE
+                  </button>
+                )}
 
                 {role === "CEO" && (
                   <button
