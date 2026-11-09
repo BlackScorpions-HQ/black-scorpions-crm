@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -101,6 +100,7 @@ export default function Home() {
 
         if (
           profile.role === "CEO" ||
+          profile.role === "Assistant" ||
           profile.role === "Team Leader"
         ) {
           await loadTeam();
@@ -172,7 +172,7 @@ export default function Home() {
     loadDashboard();
   }, [supabase]);
 
-  // Load pending account change requests for CEO
+  // Load pending account change requests for CEO only
   async function loadChangeRequests() {
     setRequestsLoading(true);
     setRequestError("");
@@ -286,7 +286,9 @@ export default function Home() {
   }
 
   const isCEO = role === "CEO";
+  const isAssistant = role === "Assistant";
   const isTeamLeader = role === "Team Leader";
+  const isExecutive = isCEO || isAssistant;
 
   const sections = isCEO
     ? [
@@ -423,7 +425,7 @@ export default function Home() {
         b.commission_total - a.commission_total
     );
 
-  // Company Performance Analytics - CEO
+  // Company Performance Analytics - CEO & Assistant
   const companyPerformance = Object.values(
     hires.reduce((groups, hire) => {
       const companyName = (
@@ -505,7 +507,11 @@ export default function Home() {
         </h2>
 
         <div style={styles.role}>
-          {isCEO ? "CEO / FOUNDER" : role.toUpperCase()}
+          {isCEO
+            ? "CEO / FOUNDER"
+            : isAssistant
+            ? "EXECUTIVE ASSISTANT"
+            : role.toUpperCase()}
         </div>
       </section>
 
@@ -634,6 +640,8 @@ export default function Home() {
         <ScorpionMark size={28} />
         {isCEO
           ? " CEO Dashboard"
+          : isAssistant
+          ? " Executive Assistant Dashboard"
           : isTeamLeader
           ? " Team Leader Dashboard"
           : " Recruiter Dashboard"}
@@ -664,16 +672,20 @@ export default function Home() {
         ))}
       </section>
 
-      {(isCEO || isTeamLeader) && (
+      {(isCEO || isAssistant || isTeamLeader) && (
         <>
           <section style={styles.teamSection}>
             <h2 style={styles.sectionTitle}>
               <ScorpionMark size={29} />
-              {isCEO ? " Company Overview" : " My Team Overview"}
+              {isCEO
+                ? " Company Overview"
+                : isAssistant
+                ? " Executive Company Overview"
+                : " My Team Overview"}
             </h2>
 
             <p style={styles.muted}>
-              {isCEO
+              {isCEO || isAssistant
                 ? "Complete company performance and recruitment statistics."
                 : "Performance and statistics for your assigned team."}
             </p>
@@ -810,8 +822,8 @@ export default function Home() {
                 )}
               </section>
 
-              {/* TEAM LEADER PERFORMANCE - CEO ONLY */}
-              {isCEO && (
+              {/* TEAM LEADER PERFORMANCE - CEO & ASSISTANT */}
+              {isExecutive && (
                 <section style={styles.teamSection}>
                   <h2 style={styles.sectionTitle}>
                     <ScorpionMark size={29} />
@@ -884,8 +896,8 @@ export default function Home() {
                 </section>
               )}
 
-              {/* COMPANY PERFORMANCE ANALYTICS - CEO ONLY */}
-              {isCEO && (
+              {/* COMPANY PERFORMANCE ANALYTICS - CEO & ASSISTANT */}
+              {isExecutive && (
                 <section style={styles.teamSection}>
                   <h2 style={styles.sectionTitle}>
                     <ScorpionMark size={29} />
@@ -1020,11 +1032,11 @@ export default function Home() {
           <section style={styles.teamSection}>
             <h2 style={styles.sectionTitle}>
               <ScorpionMark size={29} />
-              {isCEO ? " Company Teams" : " My Team"}
+              {isCEO || isAssistant ? " Company Teams" : " My Team"}
             </h2>
 
             <p style={styles.muted}>
-              {isCEO
+              {isCEO || isAssistant
                 ? "View all Team Leaders and Recruiters in your company."
                 : "View the Recruiters assigned to your team."}
             </p>
@@ -1046,7 +1058,7 @@ export default function Home() {
                     <tr>
                       <th style={styles.cell}>Name</th>
                       <th style={styles.cell}>Role</th>
-                      {isCEO && (
+                      {(isCEO || isAssistant) && (
                         <th style={styles.cell}>Team Leader</th>
                       )}
                       <th style={styles.cell}>Candidates</th>
@@ -1068,7 +1080,7 @@ export default function Home() {
                           {member.member_role}
                         </td>
 
-                        {isCEO && (
+                        {(isCEO || isAssistant) && (
                           <td style={styles.cell}>
                             {member.team_leader_name}
                           </td>
