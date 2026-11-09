@@ -42,8 +42,12 @@ export default function AccountManagement() {
 
   const [message, setMessage] = useState("");
 
-  const isCEO = currentRole === "CEO";
-  const isAssistant = currentRole === "Assistant";
+  // Normalize role to avoid spaces or capitalization issues.
+  const normalizedRole = String(currentRole || "").trim().toLowerCase();
+
+  const isCEO = normalizedRole === "ceo";
+  const isAssistant = normalizedRole === "assistant";
+  const canManageRoles = isCEO || isAssistant;
 
   async function loadData() {
     setLoading(true);
@@ -65,12 +69,20 @@ export default function AccountManagement() {
         .eq("id", user.id)
         .single();
 
-      if (roleError || !ALLOWED_ROLES.includes(roleData?.role)) {
+      if (roleError || !roleData?.role) {
+        throw new Error(
+          roleError?.message || "Unable to load your account role."
+        );
+      }
+
+      const loadedRole = String(roleData.role).trim();
+
+      if (!ALLOWED_ROLES.includes(loadedRole)) {
         router.replace("/");
         return;
       }
 
-      setCurrentRole(roleData.role);
+      setCurrentRole(loadedRole);
 
       const [membersResult, hiresResult, commissionsResult] =
         await Promise.all([
@@ -80,7 +92,9 @@ export default function AccountManagement() {
         ]);
 
       if (membersResult.error) {
-        throw new Error(membersResult.error.message);
+        throw new Error(
+          "Members: " + membersResult.error.message
+        );
       }
 
       if (hiresResult.error) {
@@ -118,7 +132,7 @@ export default function AccountManagement() {
   }
 
   async function sendAssignment(body) {
-    if (!ALLOWED_ROLES.includes(currentRole)) {
+    if (!canManageRoles) {
       throw new Error("Access denied.");
     }
 
@@ -146,9 +160,9 @@ export default function AccountManagement() {
     return result;
   }
 
-  // CEO AND ASSISTANT: Change member roles with different permissions
+  // CEO and Assistant role management.
   async function updateUserRole() {
-    if (!isCEO && !isAssistant) {
+    if (!canManageRoles) {
       setMessage("You are not authorized to change user roles.");
       return;
     }
@@ -206,9 +220,7 @@ export default function AccountManagement() {
       const token = await getToken();
 
       if (!token) {
-        throw new Error(
-          "No active session. Please login again."
-        );
+        throw new Error("No active session. Please login again.");
       }
 
       const response = await fetch("/api/admin/update-role", {
@@ -250,8 +262,7 @@ export default function AccountManagement() {
 
       if (!result.success || !result.user?.role) {
         throw new Error(
-          `HTTP ${response.status}\n` +
-          `Unexpected API response: ${rawResponse}`
+          `HTTP ${response.status}\nUnexpected API response: ${rawResponse}`
         );
       }
 
@@ -273,9 +284,7 @@ export default function AccountManagement() {
       );
     } catch (error) {
       setMessage(
-        `ROLE UPDATE FAILED\n\n${
-          error.message || "Unknown error"
-        }`
+        `ROLE UPDATE FAILED\n\n${error.message || "Unknown error"}`
       );
     } finally {
       setSaving(false);
@@ -509,15 +518,12 @@ export default function AccountManagement() {
 
     return {
       leaders: managerLeaders.length,
-
       recruiters: recruiters.filter((r) =>
         managerLeaders.some(
           (l) => l.member_id === r.team_leader_id
         )
       ).length,
-
       hires: teamHires.length,
-
       commissions: teamCommissions.reduce(
         (sum, c) => sum + Number(c.amount || 0),
         0
@@ -566,9 +572,7 @@ export default function AccountManagement() {
           </p>
 
           <div style={s.roleBadge}>
-            {currentRole === "CEO"
-              ? "CEO ACCESS"
-              : "EXECUTIVE ASSISTANT ACCESS"}
+            ACCESS: {currentRole || "ROLE NOT LOADED"}
           </div>
 
           <div style={s.line} />
@@ -595,9 +599,9 @@ export default function AccountManagement() {
               ))}
             </div>
 
-            {/* ROLE MANAGEMENT - CEO AND ASSISTANT */}
+            {/* ROLE MANAGEMENT */}
 
-            {(isCEO || isAssistant) && (
+            {canManageRoles && (
               <section style={s.section}>
                 <SectionTitle
                   eyebrow="EXECUTIVE ACCESS CONTROL"
@@ -1129,7 +1133,6 @@ const s = {
     fontFamily: "Arial, sans-serif",
     position: "relative",
   },
-
   glow: {
     position: "absolute",
     top: 250,
@@ -1141,14 +1144,12 @@ const s = {
     filter: "blur(100px)",
     pointerEvents: "none",
   },
-
   container: {
     maxWidth: 1150,
     margin: "auto",
     position: "relative",
     zIndex: 1,
   },
-
   back: {
     background: "rgba(212,175,55,0.06)",
     color: "#d4af37",
@@ -1159,35 +1160,29 @@ const s = {
     fontWeight: "bold",
     marginBottom: 25,
   },
-
   header: {
     textAlign: "center",
     marginBottom: 35,
   },
-
   logo: {
     fontSize: 40,
     color: "#d4af37",
     marginBottom: 10,
   },
-
   eyebrow: {
     color: "#a98b3b",
     fontSize: 11,
     letterSpacing: 3,
   },
-
   title: {
     fontSize: "clamp(26px, 5vw, 42px)",
     fontWeight: 900,
     letterSpacing: 2,
   },
-
   subtitle: {
     color: "#999",
     fontSize: 13,
   },
-
   roleBadge: {
     display: "inline-block",
     color: "#d4af37",
@@ -1200,28 +1195,24 @@ const s = {
     letterSpacing: 1,
     marginTop: 12,
   },
-
   line: {
     width: 100,
     height: 2,
     background: "#d4af37",
     margin: "22px auto",
   },
-
   stats: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))",
     gap: 12,
     marginBottom: 22,
   },
-
   stat: {
     background: "#17150f",
     border: "1px solid rgba(212,175,55,.25)",
     borderRadius: 12,
     padding: 17,
   },
-
   section: {
     background: "linear-gradient(145deg,#191919,#101010)",
     border: "1px solid rgba(212,175,55,.23)",
@@ -1230,18 +1221,15 @@ const s = {
     marginBottom: 22,
     overflow: "hidden",
   },
-
   sectionTitle: {
     marginBottom: 22,
   },
-
   roleDescription: {
     color: "#999",
     fontSize: 12,
     lineHeight: 1.8,
     marginTop: -10,
   },
-
   roleInfo: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
@@ -1252,7 +1240,6 @@ const s = {
     borderRadius: 8,
     marginBottom: 8,
   },
-
   roleWarning: {
     color: "#c5a85c",
     background: "rgba(212,175,55,.06)",
@@ -1263,7 +1250,6 @@ const s = {
     fontSize: 11,
     lineHeight: 1.7,
   },
-
   label: {
     display: "block",
     color: "#c6a747",
@@ -1272,7 +1258,6 @@ const s = {
     letterSpacing: 1,
     margin: "17px 0 9px",
   },
-
   select: {
     width: "100%",
     padding: 14,
@@ -1283,7 +1268,6 @@ const s = {
     marginBottom: 10,
     fontSize: 13,
   },
-
   info: {
     padding: 13,
     background: "rgba(212,175,55,.07)",
@@ -1292,7 +1276,6 @@ const s = {
     fontSize: 12,
     lineHeight: 2,
   },
-
   goldButton: {
     width: "100%",
     padding: 15,
@@ -1304,7 +1287,6 @@ const s = {
     fontWeight: 900,
     cursor: "pointer",
   },
-
   deleteButton: {
     width: "100%",
     padding: 14,
@@ -1316,14 +1298,12 @@ const s = {
     fontWeight: "bold",
     cursor: "pointer",
   },
-
   permissionNote: {
     color: "#999",
     fontSize: 11,
     textAlign: "center",
     marginTop: 12,
   },
-
   managerCard: {
     border: "1px solid rgba(212,175,55,.35)",
     borderRadius: 12,
@@ -1331,7 +1311,6 @@ const s = {
     marginBottom: 20,
     background: "#111",
   },
-
   managerHeader: {
     display: "flex",
     alignItems: "center",
@@ -1342,7 +1321,6 @@ const s = {
     paddingBottom: 14,
     marginBottom: 14,
   },
-
   teamCard: {
     background: "#191919",
     border: "1px solid #3d3420",
@@ -1350,7 +1328,6 @@ const s = {
     padding: 14,
     marginTop: 13,
   },
-
   teamHeader: {
     display: "flex",
     justifyContent: "space-between",
@@ -1358,7 +1335,6 @@ const s = {
     flexWrap: "wrap",
     gap: 10,
   },
-
   badge: {
     color: "#d4af37",
     border: "1px solid #80672b",
@@ -1367,14 +1343,12 @@ const s = {
     fontSize: 10,
     fontWeight: "bold",
   },
-
   performanceGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))",
     gap: 9,
     margin: "14px 0",
   },
-
   metric: {
     background: "#0b0b0b",
     border: "1px solid #302817",
@@ -1382,13 +1356,11 @@ const s = {
     padding: 11,
     minWidth: 0,
   },
-
   tableWrap: {
     overflowX: "auto",
     width: "100%",
     marginTop: 13,
   },
-
   table: {
     width: "100%",
     minWidth: 570,
@@ -1396,20 +1368,17 @@ const s = {
     textAlign: "left",
     fontSize: 12,
   },
-
   empty: {
     color: "#888",
     textAlign: "center",
     padding: 20,
   },
-
   note: {
     color: "#888",
     fontSize: 11,
     lineHeight: 1.7,
     marginTop: 13,
   },
-
   message: {
     marginTop: 18,
     padding: 14,
@@ -1419,7 +1388,6 @@ const s = {
     color: "#e8c75a",
     fontSize: 13,
   },
-
   messageText: {
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
@@ -1427,13 +1395,11 @@ const s = {
     margin: 0,
     lineHeight: 1.7,
   },
-
   loading: {
     textAlign: "center",
     padding: 60,
     color: "#d4af37",
   },
-
   footer: {
     textAlign: "center",
     color: "#68604c",
