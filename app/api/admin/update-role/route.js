@@ -4,12 +4,20 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-const ALLOWED_ROLES = [
+const CEO_ALLOWED_ROLES = [
   "Recruiter",
   "Assistant",
   "Team Leader",
   "Unit Manager",
 ];
+
+const ASSISTANT_ALLOWED_ROLES = [
+  "Recruiter",
+  "Team Leader",
+];
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request) {
   try {
@@ -25,6 +33,7 @@ export async function POST(request) {
       );
     }
 
+    // Authenticate requester
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -56,6 +65,7 @@ export async function POST(request) {
       );
     }
 
+    // Admin client
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         persistSession: false,
@@ -63,6 +73,7 @@ export async function POST(request) {
       },
     });
 
+    // Verify requester role
     const { data: requester, error: requesterError } = await admin
       .from("user_roles")
       .select("id, role")
@@ -78,9 +89,12 @@ export async function POST(request) {
       );
     }
 
-    if (!requester || requester.role !== "CEO") {
+    if (
+      !requester ||
+      !["CEO", "Assistant"].includes(requester.role)
+    ) {
       return NextResponse.json(
-        { error: "Only the CEO can change user roles." },
+        { error: "You are not authorized to change user roles." },
         { status: 403 }
       );
     }
@@ -90,7 +104,7 @@ export async function POST(request) {
 
     if (
       typeof user_id !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_id)
+      !UUID_REGEX.test(user_id)
     ) {
       return NextResponse.json(
         { error: "A valid user ID is required." },
@@ -98,13 +112,7 @@ export async function POST(request) {
       );
     }
 
-    if (!ALLOWED_ROLES.includes(new_role)) {
-      return NextResponse.json(
-        { error: "Invalid role selected." },
-        { status: 400 }
-      );
-    }
-
+    // Prevent changing your own role
     if (user_id === user.id) {
       return NextResponse.json(
         { error: "You cannot change your own role." },
@@ -112,6 +120,25 @@ export async function POST(request) {
       );
     }
 
+    // Role permissions depend on requester
+    const allowedRoles =
+      requester.role === "CEO"
+        ? CEO_ALLOWED_ROLES
+        : ASSISTANT_ALLOWED_ROLES;
+
+    if (!allowedRoles.includes(new_role)) {
+      return NextResponse.json(
+        {
+          error:
+            requester.role === "Assistant"
+              ? "Assistant can only assign Recruiter or Team Leader roles."
+              : "Invalid role selected.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Find target account
     const { data: target, error: targetError } = await admin
       .from("user_roles")
       .select("id, role")
@@ -134,6 +161,7 @@ export async function POST(request) {
       );
     }
 
+    // CEO accounts are protected for everyone
     if (target.role === "CEO") {
       return NextResponse.json(
         { error: "CEO accounts cannot be modified." },
@@ -148,6 +176,7 @@ export async function POST(request) {
       );
     }
 
+    // Update role
     const { data: updatedUser, error: updateError } = await admin
       .from("user_roles")
       .update({ role: new_role })
@@ -180,7 +209,9 @@ export async function POST(request) {
 
     if (!updatedUser) {
       return NextResponse.json(
-        { error: "Role was not updated. Please refresh and try again." },
+        {
+          error: "Role was not updated. Please refresh and try again.",
+        },
         { status: 409 }
       );
     }
