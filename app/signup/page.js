@@ -19,10 +19,15 @@ export default function SignupPage() {
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadTeamLeaders() {
       const { data, error } = await supabase.rpc("get_team_leaders");
 
+      if (!mounted) return;
+
       if (error) {
+        console.error("TEAM LEADERS ERROR:", error);
         setError("Unable to load Team Leaders: " + error.message);
       } else {
         setTeamLeaders(data || []);
@@ -32,10 +37,17 @@ export default function SignupPage() {
     }
 
     loadTeamLeaders();
+
+    return () => {
+      mounted = false;
+    };
   }, [supabase]);
 
   async function handleSignup(e) {
     e.preventDefault();
+
+    if (loading) return;
+
     setLoading(true);
     setMessage("");
     setError("");
@@ -47,30 +59,50 @@ export default function SignupPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
         options: {
           data: {
-            full_name: name,
-            phone: phone,
-            team_leader_id: teamLeader
-          }
-        }
+            full_name: name.trim(),
+            phone: phone.trim(),
+            team_leader_id: teamLeader,
+          },
+        },
       });
 
       if (error) {
-        setError(error.message);
+        console.error("SUPABASE SIGNUP ERROR:", error);
+
+        setError(
+          `Message: ${error.message} | Code: ${
+            error.code || "N/A"
+          } | Status: ${error.status || "N/A"}`
+        );
       } else {
+        console.log("SIGNUP RESPONSE:", data);
+
         setMessage(
           "Account created! Check your email to confirm your account before logging in."
         );
+
+        setName("");
+        setPhone("");
+        setEmail("");
+        setPassword("");
+        setTeamLeader("");
       }
     } catch (err) {
-      setError(err.message || "Something went wrong.");
-    }
+      console.error("SIGNUP UNEXPECTED ERROR:", err);
 
-    setLoading(false);
+      setError(
+        `Message: ${err.message || "Something went wrong."} | Code: ${
+          err.code || "N/A"
+        } | Status: ${err.status || "N/A"}`
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -84,22 +116,15 @@ export default function SignupPage() {
         <div style={styles.logo}>
           <div style={styles.logoCircle}>🦂</div>
 
-          <h1 style={styles.heading}>
-            BLACK SCORPIONS
-          </h1>
+          <h1 style={styles.heading}>BLACK SCORPIONS</h1>
 
           <div style={styles.goldLine}></div>
 
-          <p style={styles.subtitle}>
-            RECRUITMENT CRM
-          </p>
+          <p style={styles.subtitle}>RECRUITMENT CRM</p>
         </div>
 
         <div style={styles.welcome}>
-          <h2 style={styles.welcomeTitle}>
-            JOIN THE TEAM
-          </h2>
-
+          <h2 style={styles.welcomeTitle}>JOIN THE TEAM</h2>
           <p style={styles.welcomeText}>
             Create your recruiter account
           </p>
@@ -111,10 +136,11 @@ export default function SignupPage() {
           <input
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             required
             placeholder="Enter your full name"
             style={styles.input}
+            disabled={loading}
           />
 
           <label style={styles.label}>PHONE NUMBER</label>
@@ -122,10 +148,11 @@ export default function SignupPage() {
           <input
             type="tel"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={(e) => setPhone(e.target.value)}
             required
             placeholder="Enter your phone number"
             style={styles.input}
+            disabled={loading}
           />
 
           <label style={styles.label}>EMAIL ADDRESS</label>
@@ -133,10 +160,11 @@ export default function SignupPage() {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="Enter your email"
             style={styles.input}
+            disabled={loading}
           />
 
           <label style={styles.label}>PASSWORD</label>
@@ -144,11 +172,12 @@ export default function SignupPage() {
           <input
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
             placeholder="Minimum 8 characters"
             style={styles.input}
+            disabled={loading}
           />
 
           <label style={styles.label}>
@@ -157,13 +186,17 @@ export default function SignupPage() {
 
           <select
             value={teamLeader}
-            onChange={e => setTeamLeader(e.target.value)}
+            onChange={(e) => setTeamLeader(e.target.value)}
             required
-            disabled={loadingLeaders || teamLeaders.length === 0}
+            disabled={
+              loading ||
+              loadingLeaders ||
+              teamLeaders.length === 0
+            }
             style={{
               ...styles.input,
               cursor: "pointer",
-              color: teamLeader ? "#fff" : "#999"
+              color: teamLeader ? "#fff" : "#999",
             }}
           >
             <option value="">
@@ -172,7 +205,7 @@ export default function SignupPage() {
                 : "Select Your Team Leader"}
             </option>
 
-            {teamLeaders.map(leader => (
+            {teamLeaders.map((leader) => (
               <option
                 key={leader.id}
                 value={leader.id}
@@ -210,7 +243,7 @@ export default function SignupPage() {
             }
             style={{
               ...styles.createButton,
-              opacity: loading || loadingLeaders ? 0.7 : 1
+              opacity: loading || loadingLeaders ? 0.7 : 1,
             }}
           >
             {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
@@ -276,7 +309,7 @@ const styles = {
     padding: "30px 16px",
     fontFamily: "Arial, sans-serif",
     position: "relative",
-    overflow: "hidden"
+    overflow: "hidden",
   },
 
   smokeOne: {
@@ -289,7 +322,7 @@ const styles = {
     top: "-200px",
     left: "-200px",
     filter: "blur(50px)",
-    pointerEvents: "none"
+    pointerEvents: "none",
   },
 
   smokeTwo: {
@@ -302,7 +335,7 @@ const styles = {
     bottom: "-300px",
     right: "-200px",
     filter: "blur(60px)",
-    pointerEvents: "none"
+    pointerEvents: "none",
   },
 
   card: {
@@ -316,7 +349,7 @@ const styles = {
     boxShadow:
       "0 0 35px rgba(212,175,55,0.10), 0 25px 80px rgba(0,0,0,0.8)",
     position: "relative",
-    zIndex: 1
+    zIndex: 1,
   },
 
   topLine: {
@@ -324,12 +357,12 @@ const styles = {
     width: "75px",
     background:
       "linear-gradient(90deg, transparent, #d4af37, transparent)",
-    margin: "0 auto 28px"
+    margin: "0 auto 28px",
   },
 
   logo: {
     textAlign: "center",
-    marginBottom: "30px"
+    marginBottom: "30px",
   },
 
   logoCircle: {
@@ -343,7 +376,7 @@ const styles = {
     margin: "0 auto 17px",
     fontSize: "38px",
     background: "linear-gradient(145deg, #292316, #090909)",
-    boxShadow: "0 0 25px rgba(212,175,55,0.16)"
+    boxShadow: "0 0 25px rgba(212,175,55,0.16)",
   },
 
   heading: {
@@ -351,39 +384,39 @@ const styles = {
     fontSize: "25px",
     fontWeight: "900",
     letterSpacing: "2px",
-    margin: 0
+    margin: 0,
   },
 
   goldLine: {
     width: "100px",
     height: "1px",
     background: "#d4af37",
-    margin: "15px auto"
+    margin: "15px auto",
   },
 
   subtitle: {
     color: "#999",
     fontSize: "11px",
     letterSpacing: "4px",
-    margin: 0
+    margin: 0,
   },
 
   welcome: {
     textAlign: "center",
-    marginBottom: "27px"
+    marginBottom: "27px",
   },
 
   welcomeTitle: {
     color: "#fff",
     fontSize: "19px",
     letterSpacing: "2px",
-    margin: "0 0 9px"
+    margin: "0 0 9px",
   },
 
   welcomeText: {
     color: "#999",
     fontSize: "13px",
-    margin: 0
+    margin: 0,
   },
 
   label: {
@@ -392,7 +425,7 @@ const styles = {
     fontSize: "11px",
     fontWeight: "bold",
     letterSpacing: "1.5px",
-    marginBottom: "9px"
+    marginBottom: "9px",
   },
 
   input: {
@@ -404,7 +437,7 @@ const styles = {
     border: "1px solid #393939",
     borderRadius: "8px",
     fontSize: "14px",
-    transition: "0.2s"
+    transition: "0.2s",
   },
 
   createButton: {
@@ -419,7 +452,7 @@ const styles = {
     letterSpacing: "1px",
     cursor: "pointer",
     marginTop: "8px",
-    transition: "0.2s"
+    transition: "0.2s",
   },
 
   error: {
@@ -429,7 +462,8 @@ const styles = {
     padding: "12px",
     borderRadius: "7px",
     fontSize: "13px",
-    marginBottom: "15px"
+    marginBottom: "15px",
+    overflowWrap: "anywhere",
   },
 
   success: {
@@ -440,27 +474,27 @@ const styles = {
     borderRadius: "7px",
     fontSize: "13px",
     marginBottom: "15px",
-    lineHeight: "1.5"
+    lineHeight: "1.5",
   },
 
   separator: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    margin: "27px 0 20px"
+    margin: "27px 0 20px",
   },
 
   separatorLine: {
     flex: 1,
     height: "1px",
-    background: "#333"
+    background: "#333",
   },
 
   separatorText: {
     color: "#777",
     fontSize: "10px",
     letterSpacing: "1px",
-    whiteSpace: "nowrap"
+    whiteSpace: "nowrap",
   },
 
   loginButton: {
@@ -475,7 +509,7 @@ const styles = {
     fontSize: "12px",
     fontWeight: "bold",
     letterSpacing: "1.5px",
-    transition: "0.2s"
+    transition: "0.2s",
   },
 
   footer: {
@@ -485,6 +519,6 @@ const styles = {
     textAlign: "center",
     color: "#777",
     fontSize: "10px",
-    letterSpacing: "1.5px"
-  }
+    letterSpacing: "1.5px",
+  },
 };
