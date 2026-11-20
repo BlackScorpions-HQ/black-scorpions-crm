@@ -155,7 +155,7 @@ export default function AccountManagement() {
       return;
     }
 
-    const leader = leaders.find(
+    const leader = recruiterCreationLeaders.find(
       (item) => item.member_id === team_leader_id
     );
 
@@ -535,8 +535,17 @@ export default function AccountManagement() {
     (u) => u.member_role === "Assistant"
   );
 
+  // Actual Team Leaders: used for organization structure and performance.
   const leaders = users.filter(
     (u) => u.member_role === "Team Leader"
+  );
+
+  // Recruiter creation list: actual Team Leaders + CEO account.
+  // CEO remains CEO; this does not change their actual role.
+  const recruiterCreationLeaders = users.filter(
+    (u) =>
+      u.member_role === "Team Leader" ||
+      u.member_role === "CEO"
   );
 
   const managers = users.filter(
@@ -711,7 +720,6 @@ export default function AccountManagement() {
             </div>
 
             {/* ROLE MANAGEMENT */}
-
             {canManageRoles && (
               <section style={s.section}>
                 <SectionTitle
@@ -821,7 +829,6 @@ export default function AccountManagement() {
             )}
 
             {/* CREATE RECRUITER ACCOUNT - CEO ONLY */}
-
             {isCEO && (
               <section style={s.section}>
                 <SectionTitle
@@ -888,27 +895,28 @@ export default function AccountManagement() {
                 >
                   <option value="">Choose Team Leader...</option>
 
-                  {leaders.map((leader) => (
+                  {recruiterCreationLeaders.map((leader) => (
                     <option
                       key={leader.member_id}
                       value={leader.member_id}
                     >
                       {leader.member_name}
+                      {leader.member_role === "CEO" ? " — CEO" : ""}
                     </option>
                   ))}
                 </select>
 
-                {leaders.length === 0 && (
+                {recruiterCreationLeaders.length === 0 && (
                   <p style={s.note}>
-                    No Team Leaders are currently available. Create or promote
-                    a Team Leader before creating a Recruiter account.
+                    No Team Leaders or CEO account are currently available.
                   </p>
                 )}
 
                 <div style={s.roleWarning}>
                   <strong>SECURITY:</strong> Give the initial password
                   directly to the Recruiter through a secure channel.
-                  Team Leader selection is required.
+                  Team Leader selection is required. You can select the CEO
+                  account to assign the Recruiter directly under you.
                 </div>
 
                 <button
@@ -931,7 +939,6 @@ export default function AccountManagement() {
             )}
 
             {/* RECRUITER MANAGEMENT */}
-
             <section style={s.section}>
               <SectionTitle
                 eyebrow="ORGANIZATION OPERATIONS"
@@ -1015,7 +1022,6 @@ export default function AccountManagement() {
             </section>
 
             {/* UNIT MANAGER MANAGEMENT */}
-
             <section style={s.section}>
               <SectionTitle
                 eyebrow="ORGANIZATION STRUCTURE"
@@ -1092,7 +1098,6 @@ export default function AccountManagement() {
             </section>
 
             {/* ORGANIZATION PERFORMANCE */}
-
             <section style={s.section}>
               <SectionTitle
                 eyebrow="PERFORMANCE OVERVIEW"
@@ -1277,7 +1282,6 @@ export default function AccountManagement() {
             </section>
 
             {/* ALL MEMBERS */}
-
             <section style={s.section}>
               <SectionTitle
                 eyebrow="ORGANIZATION DIRECTORY"
