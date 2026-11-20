@@ -42,6 +42,12 @@ export default function AccountManagement() {
 
   const [message, setMessage] = useState("");
 
+  // CREATE RECRUITER ACCOUNT
+  const [newRecruiterName, setNewRecruiterName] = useState("");
+  const [newRecruiterEmail, setNewRecruiterEmail] = useState("");
+  const [newRecruiterPassword, setNewRecruiterPassword] = useState("");
+  const [creatingRecruiter, setCreatingRecruiter] = useState(false);
+
   // Normalize role to avoid spaces or capitalization issues.
   const normalizedRole = String(currentRole || "").trim().toLowerCase();
 
@@ -129,6 +135,97 @@ export default function AccountManagement() {
     } = await supabase.auth.getSession();
 
     return session?.access_token;
+  }
+
+  // CREATE RECRUITER
+  async function createRecruiter() {
+    if (!isCEO) {
+      setMessage("Only the CEO can create Recruiter accounts.");
+      return;
+    }
+
+    const full_name = newRecruiterName.trim();
+    const email = newRecruiterEmail.trim().toLowerCase();
+    const password = newRecruiterPassword;
+
+    if (!full_name || !email || !password) {
+      setMessage("Please fill in all Recruiter account fields.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setMessage("Password must be at least 8 characters.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Create a new Recruiter account?\n\nName: ${full_name}\nEmail: ${email}`
+    );
+
+    if (!confirmed) return;
+
+    setCreatingRecruiter(true);
+    setMessage("CREATING RECRUITER ACCOUNT...");
+
+    try {
+      const token = await getToken();
+
+      if (!token) {
+        throw new Error("No active session. Please login again.");
+      }
+
+      const response = await fetch("/api/admin/create-recruiter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          full_name,
+          email,
+          password,
+        }),
+      });
+
+      const rawResponse = await response.text();
+
+      let result = {};
+
+      try {
+        result = JSON.parse(rawResponse);
+      } catch {
+        result = { raw: rawResponse };
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || result.raw || "Recruiter creation failed."
+        );
+      }
+
+      if (!result.success) {
+        throw new Error("Unexpected API response.");
+      }
+
+      setNewRecruiterName("");
+      setNewRecruiterEmail("");
+      setNewRecruiterPassword("");
+
+      await loadData();
+
+      setMessage(
+        `RECRUITER CREATED SUCCESSFULLY!\n\n` +
+        `Name: ${full_name}\n` +
+        `Email: ${email}\n` +
+        `Role: Recruiter`
+      );
+    } catch (error) {
+      setMessage(
+        `RECRUITER CREATION FAILED\n\n${error.message || "Unknown error"}`
+      );
+    } finally {
+      setCreatingRecruiter(false);
+    }
   }
 
   async function sendAssignment(body) {
@@ -709,6 +806,75 @@ export default function AccountManagement() {
               </section>
             )}
 
+            {/* CREATE RECRUITER ACCOUNT - CEO ONLY */}
+
+            {isCEO && (
+              <section style={s.section}>
+                <SectionTitle
+                  eyebrow="DIRECT ACCOUNT CREATION"
+                  title="CREATE RECRUITER ACCOUNT"
+                />
+
+                <p style={s.roleDescription}>
+                  Create Recruiter accounts directly without relying on
+                  the standard signup email process.
+                </p>
+
+                <label style={s.label}>RECRUITER FULL NAME</label>
+
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="Enter full name"
+                  value={newRecruiterName}
+                  onChange={(e) => setNewRecruiterName(e.target.value)}
+                  disabled={creatingRecruiter}
+                />
+
+                <label style={s.label}>EMAIL ADDRESS</label>
+
+                <input
+                  style={s.input}
+                  type="email"
+                  placeholder="Enter email address"
+                  value={newRecruiterEmail}
+                  onChange={(e) => setNewRecruiterEmail(e.target.value)}
+                  disabled={creatingRecruiter}
+                />
+
+                <label style={s.label}>INITIAL PASSWORD</label>
+
+                <input
+                  style={s.input}
+                  type="password"
+                  placeholder="Minimum 8 characters"
+                  value={newRecruiterPassword}
+                  onChange={(e) => setNewRecruiterPassword(e.target.value)}
+                  disabled={creatingRecruiter}
+                />
+
+                <div style={s.roleWarning}>
+                  <strong>SECURITY:</strong> Give the initial password
+                  directly to the Recruiter through a secure channel.
+                </div>
+
+                <button
+                  style={s.goldButton}
+                  disabled={
+                    creatingRecruiter ||
+                    !newRecruiterName.trim() ||
+                    !newRecruiterEmail.trim() ||
+                    newRecruiterPassword.length < 8
+                  }
+                  onClick={createRecruiter}
+                >
+                  {creatingRecruiter
+                    ? "CREATING ACCOUNT..."
+                    : "CREATE RECRUITER ACCOUNT"}
+                </button>
+              </section>
+            )}
+
             {/* RECRUITER MANAGEMENT */}
 
             <section style={s.section}>
@@ -1267,6 +1433,18 @@ const s = {
     border: "1px solid #514321",
     marginBottom: 10,
     fontSize: 13,
+  },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: 14,
+    borderRadius: 8,
+    background: "#090909",
+    color: "#fff",
+    border: "1px solid #514321",
+    marginBottom: 10,
+    fontSize: 13,
+    outline: "none",
   },
   info: {
     padding: 13,
