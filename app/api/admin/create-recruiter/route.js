@@ -10,7 +10,10 @@ export async function POST(request) {
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.slice(7);
@@ -45,6 +48,7 @@ export async function POST(request) {
       },
     });
 
+    // Verify that the account creating the Recruiter is CEO.
     const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
@@ -68,7 +72,10 @@ export async function POST(request) {
 
     if (!full_name || !phone || !email || !password || !team_leader_id) {
       return NextResponse.json(
-        { error: "Full Name, Phone, Email, Password and Team Leader are required." },
+        {
+          error:
+            "Full Name, Phone, Email, Password and Team Leader are required.",
+        },
         { status: 400 }
       );
     }
@@ -80,22 +87,25 @@ export async function POST(request) {
       );
     }
 
-    // Confirm that the selected account is actually a Team Leader.
+    // Allow assignment under either a real Team Leader or the CEO.
     const { data: leaderData, error: leaderError } = await adminClient
       .from("user_roles")
       .select("id, role")
       .eq("id", team_leader_id)
-      .eq("role", "Team Leader")
+      .in("role", ["Team Leader", "CEO"])
       .maybeSingle();
 
     if (leaderError || !leaderData) {
       return NextResponse.json(
-        { error: "The selected Team Leader is invalid." },
+        {
+          error:
+            "The selected account is invalid. Select the CEO or a Team Leader.",
+        },
         { status: 400 }
       );
     }
 
-    // Create the Auth account.
+    // Create the Recruiter's Auth account.
     const { data: createdUser, error: createError } =
       await adminClient.auth.admin.createUser({
         email,
@@ -117,7 +127,7 @@ export async function POST(request) {
 
     createdUserId = createdUser.user.id;
 
-    // Insert or update the Recruiter's role and Team Leader assignment.
+    // Save Recruiter role and selected reporting account.
     const { error: roleSaveError } = await adminClient
       .from("user_roles")
       .upsert(
@@ -149,6 +159,7 @@ export async function POST(request) {
         phone,
         role: "Recruiter",
         team_leader_id,
+        team_leader_role: leaderData.role,
       },
     });
   } catch (error) {
