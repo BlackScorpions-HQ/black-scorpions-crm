@@ -44,11 +44,12 @@ export default function AccountManagement() {
 
   // CREATE RECRUITER ACCOUNT
   const [newRecruiterName, setNewRecruiterName] = useState("");
+  const [newRecruiterPhone, setNewRecruiterPhone] = useState("");
   const [newRecruiterEmail, setNewRecruiterEmail] = useState("");
   const [newRecruiterPassword, setNewRecruiterPassword] = useState("");
+  const [newRecruiterTeamLeader, setNewRecruiterTeamLeader] = useState("");
   const [creatingRecruiter, setCreatingRecruiter] = useState(false);
 
-  // Normalize role to avoid spaces or capitalization issues.
   const normalizedRole = String(currentRole || "").trim().toLowerCase();
 
   const isCEO = normalizedRole === "ceo";
@@ -98,21 +99,15 @@ export default function AccountManagement() {
         ]);
 
       if (membersResult.error) {
-        throw new Error(
-          "Members: " + membersResult.error.message
-        );
+        throw new Error("Members: " + membersResult.error.message);
       }
 
       if (hiresResult.error) {
-        throw new Error(
-          "Successful Hires: " + hiresResult.error.message
-        );
+        throw new Error("Successful Hires: " + hiresResult.error.message);
       }
 
       if (commissionsResult.error) {
-        throw new Error(
-          "Commissions: " + commissionsResult.error.message
-        );
+        throw new Error("Commissions: " + commissionsResult.error.message);
       }
 
       setUsers(membersResult.data || []);
@@ -137,7 +132,7 @@ export default function AccountManagement() {
     return session?.access_token;
   }
 
-  // CREATE RECRUITER
+  // CREATE RECRUITER ACCOUNT
   async function createRecruiter() {
     if (!isCEO) {
       setMessage("Only the CEO can create Recruiter accounts.");
@@ -145,11 +140,13 @@ export default function AccountManagement() {
     }
 
     const full_name = newRecruiterName.trim();
+    const phone = newRecruiterPhone.trim();
     const email = newRecruiterEmail.trim().toLowerCase();
     const password = newRecruiterPassword;
+    const team_leader_id = newRecruiterTeamLeader;
 
-    if (!full_name || !email || !password) {
-      setMessage("Please fill in all Recruiter account fields.");
+    if (!full_name || !phone || !email || !password || !team_leader_id) {
+      setMessage("Please complete all five fields.");
       return;
     }
 
@@ -158,8 +155,21 @@ export default function AccountManagement() {
       return;
     }
 
+    const leader = leaders.find(
+      (item) => item.member_id === team_leader_id
+    );
+
+    if (!leader) {
+      setMessage("Please select a valid Team Leader.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      `Create a new Recruiter account?\n\nName: ${full_name}\nEmail: ${email}`
+      `Create a new Recruiter account?\n\n` +
+      `Name: ${full_name}\n` +
+      `Phone: ${phone}\n` +
+      `Email: ${email}\n` +
+      `Team Leader: ${leader.member_name}`
     );
 
     if (!confirmed) return;
@@ -182,13 +192,14 @@ export default function AccountManagement() {
         },
         body: JSON.stringify({
           full_name,
+          phone,
           email,
           password,
+          team_leader_id,
         }),
       });
 
       const rawResponse = await response.text();
-
       let result = {};
 
       try {
@@ -208,15 +219,19 @@ export default function AccountManagement() {
       }
 
       setNewRecruiterName("");
+      setNewRecruiterPhone("");
       setNewRecruiterEmail("");
       setNewRecruiterPassword("");
+      setNewRecruiterTeamLeader("");
 
       await loadData();
 
       setMessage(
         `RECRUITER CREATED SUCCESSFULLY!\n\n` +
         `Name: ${full_name}\n` +
+        `Phone: ${phone}\n` +
         `Email: ${email}\n` +
+        `Team Leader: ${leader.member_name}\n` +
         `Role: Recruiter`
       );
     } catch (error) {
@@ -257,7 +272,7 @@ export default function AccountManagement() {
     return result;
   }
 
-  // CEO and Assistant role management.
+  // CEO AND ASSISTANT ROLE MANAGEMENT
   async function updateUserRole() {
     if (!canManageRoles) {
       setMessage("You are not authorized to change user roles.");
@@ -333,7 +348,6 @@ export default function AccountManagement() {
       });
 
       const rawResponse = await response.text();
-
       let result = {};
 
       try {
@@ -820,7 +834,7 @@ export default function AccountManagement() {
                   the standard signup email process.
                 </p>
 
-                <label style={s.label}>RECRUITER FULL NAME</label>
+                <label style={s.label}>FULL NAME</label>
 
                 <input
                   style={s.input}
@@ -831,7 +845,18 @@ export default function AccountManagement() {
                   disabled={creatingRecruiter}
                 />
 
-                <label style={s.label}>EMAIL ADDRESS</label>
+                <label style={s.label}>PHONE</label>
+
+                <input
+                  style={s.input}
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={newRecruiterPhone}
+                  onChange={(e) => setNewRecruiterPhone(e.target.value)}
+                  disabled={creatingRecruiter}
+                />
+
+                <label style={s.label}>EMAIL</label>
 
                 <input
                   style={s.input}
@@ -842,7 +867,7 @@ export default function AccountManagement() {
                   disabled={creatingRecruiter}
                 />
 
-                <label style={s.label}>INITIAL PASSWORD</label>
+                <label style={s.label}>PASSWORD</label>
 
                 <input
                   style={s.input}
@@ -853,9 +878,37 @@ export default function AccountManagement() {
                   disabled={creatingRecruiter}
                 />
 
+                <label style={s.label}>TEAM LEADER</label>
+
+                <select
+                  style={s.select}
+                  value={newRecruiterTeamLeader}
+                  onChange={(e) => setNewRecruiterTeamLeader(e.target.value)}
+                  disabled={creatingRecruiter}
+                >
+                  <option value="">Choose Team Leader...</option>
+
+                  {leaders.map((leader) => (
+                    <option
+                      key={leader.member_id}
+                      value={leader.member_id}
+                    >
+                      {leader.member_name}
+                    </option>
+                  ))}
+                </select>
+
+                {leaders.length === 0 && (
+                  <p style={s.note}>
+                    No Team Leaders are currently available. Create or promote
+                    a Team Leader before creating a Recruiter account.
+                  </p>
+                )}
+
                 <div style={s.roleWarning}>
                   <strong>SECURITY:</strong> Give the initial password
                   directly to the Recruiter through a secure channel.
+                  Team Leader selection is required.
                 </div>
 
                 <button
@@ -863,8 +916,10 @@ export default function AccountManagement() {
                   disabled={
                     creatingRecruiter ||
                     !newRecruiterName.trim() ||
+                    !newRecruiterPhone.trim() ||
                     !newRecruiterEmail.trim() ||
-                    newRecruiterPassword.length < 8
+                    newRecruiterPassword.length < 8 ||
+                    !newRecruiterTeamLeader
                   }
                   onClick={createRecruiter}
                 >
