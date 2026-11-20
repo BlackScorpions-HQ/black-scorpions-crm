@@ -3,17 +3,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request) {
+  let adminClient;
+  let createdUserId = null;
+
   try {
     const authHeader = request.headers.get("authorization");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.slice(7);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -26,7 +26,6 @@ export async function POST(request) {
       );
     }
 
-    // Verify the requesting user
     const authClient = createClient(supabaseUrl, anonKey);
 
     const { data: userData, error: authError } =
@@ -39,21 +38,17 @@ export async function POST(request) {
       );
     }
 
-    const currentUser = userData.user;
-
-    // Admin client
-    const adminClient = createClient(supabaseUrl, serviceKey, {
+    adminClient = createClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
 
-    // Check role
     const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("id", currentUser.id)
+      .eq("id", userData.user.id)
       .single();
 
     if (roleError || roleData?.role !== "CEO") {
@@ -63,28 +58,44 @@ export async function POST(request) {
       );
     }
 
-    // Read request
     const body = await request.json();
 
-    const full_name = body.full_name?.trim();
-    const email = body.email?.trim().toLowerCase();
-    const password = body.password;
+    const full_name = String(body.full_name || "").trim();
+    const phone = String(body.phone || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const team_leader_id = String(body.team_leader_id || "").trim();
 
-    if (!full_name || !email || !password) {
+    if (!full_name || !phone || !email || !password || !team_leader_id) {
       return NextResponse.json(
-        { error: "Name, email and password are required" },
+        { error: "Full Name, Phone, Email, Password and Team Leader are required." },
         { status: 400 }
       );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
+        { error: "Password must be at least 8 characters." },
         { status: 400 }
       );
     }
 
-    // Create Recruiter in Auth
+    // Confirm that the selected account is actually a Team Leader.
+    const { data: leaderData, error: leaderError } = await adminClient
+      .from("user_roles")
+      .select("id, role")
+      .eq("id", team_leader_id)
+      .eq("role", "Team Leader")
+      .maybeSingle();
+
+    if (leaderError || !leaderData) {
+      return NextResponse.json(
+        { error: "The selected Team Leader is invalid." },
+        { status: 400 }
+      );
+    }
+
+    // Create the Auth account.
     const { data: createdUser, error: createError } =
       await adminClient.auth.admin.createUser({
         email,
@@ -92,6 +103,7 @@ export async function POST(request) {
         email_confirm: true,
         user_metadata: {
           full_name,
+          phone,
           role: "Recruiter",
         },
       });
@@ -103,35 +115,47 @@ export async function POST(request) {
       );
     }
 
-    // Assign Recruiter role
-    const { error: insertRoleError } = await adminClient
-      .from("user_roles")
-      .insert({
-        id: createdUser.user.id,
-        role: "Recruiter",
-      });
+    createdUserId = createdUser.user.id;
 
-    if (insertRoleError) {
-      // Roll back Auth account if role insertion fails
-      await adminClient.auth.admin.deleteUser(createdUser.user.id);
+    // Insert or update the Recruiter's role and Team Leader assignment.
+    const { error: roleSaveError } = await adminClient
+      .from("user_roles")
+      .upsert(
+        {
+          id: createdUserId,
+          role: "Recruiter",
+          team_leader_id,
+        },
+        { onConflict: "id" }
+      );
+
+    if (roleSaveError) {
+      await adminClient.auth.admin.deleteUser(createdUserId);
+      createdUserId = null;
 
       return NextResponse.json(
-        { error: insertRoleError.message },
+        { error: roleSaveError.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Recruiter account created successfully",
+      message: "Recruiter account created successfully.",
       user: {
-        id: createdUser.user.id,
+        id: createdUserId,
         email: createdUser.user.email,
         full_name,
+        phone,
         role: "Recruiter",
+        team_leader_id,
       },
     });
   } catch (error) {
+    if (adminClient && createdUserId) {
+      await adminClient.auth.admin.deleteUser(createdUserId);
+    }
+
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
